@@ -7,7 +7,7 @@ function App() {
 
   useEffect(() => {
     if (!provinceId) return;
-
+    
     fetch(`http://localhost:8080/api/hospitals/district/${provinceId}`)
       .then((res) => {
         if (!res.ok) {

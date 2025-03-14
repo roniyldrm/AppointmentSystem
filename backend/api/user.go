@@ -1,29 +1,49 @@
 package api
 
 import (
+	"backend/helper"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type User struct {
-	ID        string    `bson:"_id,omitempty" json:"id"`      // Unique ID
-	Name      string    `bson:"name" json:"name"`             // Full name
-	Email     string    `bson:"email" json:"email"`           // User's email
-	Password  string    `bson:"password" json:"-"`            // Hashed password (don't expose in JSON)
-	Role      string    `bson:"role" json:"role"`             // Role (e.g., "admin", "user", "business")
-	CreatedAt time.Time `bson:"created_at" json:"created_at"` // Account creation time
-	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"` // Last profile update
+	ID        string    `bson:"_id,omitempty" json:"id"`
+	UserCode  string    `bson:"userCode" json:"userCode"`
+	Email     string    `bson:"email" json:"email"`
+	Password  string    `bson:"password" json:"password"`
+	Role      string    `bson:"role" json:"role"`
+	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
 }
 
-func InsertUsers(collection *mongo.Collection, users []interface{}) {
-	insertResult, err := collection.InsertMany(context.TODO(), users)
+func Login(client *mongo.Client, info map[string]string) string {
+	collection := client.Database("admin").Collection("users")
+	filter := bson.D{{Key: "email", Value: info["email"]}}
+	var user User
+	err := collection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("baba siz kimsiniz")
+	} else {
+		if user.Password != info["password"] {
+			fmt.Println("sie")
+		} else {
+			fmt.Println("buyur kardesim")
+		}
 	}
 
-	fmt.Println("Inserted documents: ", insertResult.InsertedIDs)
+	return "bok"
+}
+
+func Register(client *mongo.Client, user User) string {
+	collection := client.Database("admin").Collection("users")
+	user.UserCode = helper.GenerateID(8)
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+	fmt.Print(user)
+	collection.InsertOne(context.TODO(), user)
+	return "bok"
 }

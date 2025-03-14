@@ -23,6 +23,9 @@ func main() {
 	mux := mux.NewRouter()
 
 	// Register your API handlers
+	mux.HandleFunc("/api/auth/login", handleLogin).Methods("POST")
+	mux.HandleFunc("/api/auth/register", handleRegister).Methods("POST")
+	mux.HandleFunc("/api/districts/{provinceId}", handleGetDistrictsByProvince).Methods("GET")
 	mux.HandleFunc("/api/districts/{provinceId}", handleGetDistrictsByProvince).Methods("GET")
 	mux.HandleFunc("/api/hospitals/{provinceId}", handleGetHospitalsByProvince).Methods("GET")
 	mux.HandleFunc("/api/hospitals/district/{districtId}", handleGetHospitalsByDistrict).Methods("GET")
@@ -45,6 +48,24 @@ func startServer(handler http.Handler) {
 	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	var log map[string]string
+	json.NewDecoder(r.Body).Decode(&log)
+
+	resp := api.Login(client, log)
+
+	fmt.Print(resp)
+}
+
+func handleRegister(w http.ResponseWriter, r *http.Request) {
+	var user api.User
+	json.NewDecoder(r.Body).Decode(&user)
+
+	resp := api.Register(client, user)
+
+	fmt.Print(resp)
 }
 
 func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +92,6 @@ func handleGetHospitalsByProvince(w http.ResponseWriter, r *http.Request) {
 
 func handleGetHospitalsByDistrict(w http.ResponseWriter, r *http.Request) {
 	districtId, _ := strconv.Atoi(mux.Vars(r)["districtId"])
-	fmt.Print(districtId)
 	hospitals := api.GetHospitalsByDistrict(client, districtId)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -83,28 +103,45 @@ func handleGetHospitalsByDistrict(w http.ResponseWriter, r *http.Request) {
 /* func main() {
 	client = mongodb.ConnectToDB()
 	defer client.Disconnect(context.TODO())
-	collection := client.Database("locations").Collection("provinces")
+	collection := client.Database("hospitals").Collection("hospitals")
 	cursor, _ := collection.Find(context.TODO(), bson.D{})
 	defer cursor.Close(context.TODO())
 	for cursor.Next(context.TODO()) {
-		var province bson.M
-		cursor.Decode(&province)
-		updatedProvince := province
-		updatedProvince["_id"]
-
-		filter := bson.D{{"_id", province["_id"]}}
-
-		update := bson.D{
-			{"$set", bson.D{{"_id", helper.GenerateID(4)}}},
-		}
-		collection.UpdateOne(context.TODO(), filter, update)
+		var hospital bson.M
+		cursor.Decode(&hospital)
+		filter := hospital["_id"]
+		updatedHospital := hospital
+		updatedHospital["_id"] = helper.GenerateID(6)
+		collection.UpdateOne(context.TODO(), filter, updatedHospital)
 	}
 
-		collection.UpdateMany(
-		context.TODO(),
-		bson.D{}, // No filter, affects all documents
-		bson.D{
-			{"$unset", bson.D{{"_id", helper.GenerateID(4)}}}, // Unset the 'id' field
-		},
-	)
 } */
+
+/* func main() {
+	client = mongodb.ConnectToDB()
+	defer client.Disconnect(context.TODO())
+
+	collection := client.Database("hospitals").Collection("hospitals")
+	cursor, _ := collection.Find(context.TODO(), bson.D{})
+	defer cursor.Close(context.TODO())
+
+	for cursor.Next(context.TODO()) {
+		var hospital bson.M
+		cursor.Decode(&hospital)
+		oldID := hospital["_id"]
+		newID := helper.GenerateID(6)
+		hospital["_id"] = newID
+
+		collection.DeleteOne(context.TODO(), bson.M{"_id": oldID})
+		collection.InsertOne(context.TODO(), hospital)
+	}
+} */
+
+/*
+collection.UpdateMany(
+	context.TODO(),
+	bson.D{}, // No filter, affects all documents
+	bson.D{
+		{"$set", bson.D{{"_id", helper.GenerateID(6)}}}, // Unset the 'id' field
+	},
+) */

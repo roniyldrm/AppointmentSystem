@@ -9,22 +9,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var mongoClient *mongo.Client
+
 func ConnectToDB() *mongo.Client {
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 
 	// Connect to MongoDB
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	mongoClient, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Ensure the connection is working
-	err = client.Ping(context.TODO(), nil)
+	err = mongoClient.Ping(context.TODO(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Connected to MongoDB!")
 
 	// Access the 'admin' database and 'users' collection
-	return client
+	return mongoClient
 }

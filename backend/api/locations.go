@@ -10,7 +10,7 @@ import (
 )
 
 type District struct {
-	ID         int    `bson:"id" json:"id"`
+	IDa        int    `bson:"ida" json:"ida"`
 	Name       string `bson:"name" json:"name"`
 	ProvinceId int    `bson:"provinceId" json:"provinceId"`
 }
@@ -19,6 +19,7 @@ func GetDistrictsByProvince(client *mongo.Client, provinceId int) []District {
 	collection := client.Database("locations").Collection("districts")
 
 	filter := bson.D{{Key: "provinceId", Value: provinceId}}
+
 	cursor, _ := collection.Find(context.TODO(), filter)
 	defer cursor.Close(context.TODO())
 

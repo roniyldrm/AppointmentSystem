@@ -27,7 +27,8 @@ func GetDistrictsByProvince(client *mongo.Client, provinceId int) []District {
 	for cursor.Next(context.TODO()) {
 		var district District
 		if err := cursor.Decode(&district); err != nil {
-			log.Fatal(err)
+			log.Println("Cursor decoding error:", err)
+			return nil
 		}
 		districts = append(districts, district)
 	}

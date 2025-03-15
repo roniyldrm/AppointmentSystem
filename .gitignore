@@ -36,6 +36,7 @@ dump/
 *.json
 *.bson
 *.lock
+*.env
 
 # IDE & OS
 .vscode/

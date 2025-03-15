@@ -20,8 +20,8 @@ type User struct {
 	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
 }
 
-func Login(client *mongo.Client, info map[string]string) string {
-	collection := client.Database("admin").Collection("users")
+func Login(client *mongo.Client, info map[string]string) {
+	collection := client.Database("users").Collection("users")
 	filter := bson.D{{Key: "email", Value: info["email"]}}
 	var user User
 	err := collection.FindOne(context.TODO(), filter).Decode(&user)
@@ -34,16 +34,13 @@ func Login(client *mongo.Client, info map[string]string) string {
 			fmt.Println("buyur kardesim")
 		}
 	}
-
-	return "bok"
 }
 
-func Register(client *mongo.Client, user User) string {
-	collection := client.Database("admin").Collection("users")
+func Register(client *mongo.Client, user User) {
+	collection := client.Database("users").Collection("users")
 	user.UserCode = helper.GenerateID(8)
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 	fmt.Print(user)
 	collection.InsertOne(context.TODO(), user)
-	return "bok"
 }

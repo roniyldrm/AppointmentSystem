@@ -5,7 +5,6 @@ import (
 	"backend/mongodb"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,7 +18,12 @@ var client *mongo.Client
 
 func main() {
 	client = mongodb.ConnectToDB()
-	defer client.Disconnect(context.TODO())
+	//defer client.Disconnect(context.TODO())
+	defer func() {
+		if err := client.Disconnect(context.TODO()); err != nil {
+			log.Println("Error disconnecting MongoDB:", err)
+		}
+	}()
 	mux := mux.NewRouter()
 
 	// Register your API handlers
@@ -54,18 +58,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	var log map[string]string
 	json.NewDecoder(r.Body).Decode(&log)
 
-	resp := api.Login(client, log)
-
-	fmt.Print(resp)
+	api.Login(client, log)
 }
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	var user api.User
 	json.NewDecoder(r.Body).Decode(&user)
 
-	resp := api.Register(client, user)
-
-	fmt.Print(resp)
+	api.Register(client, user)
 }
 
 func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {

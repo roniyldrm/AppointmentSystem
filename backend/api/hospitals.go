@@ -9,19 +9,17 @@ import (
 )
 
 type Hospital struct {
-	ID         int    `bson:"id" json:"id"`
-	Name       string `bson:"name" json:"name"`
-	ProvinceId int    `bson:"provinceId" json:"provinceId"`
-	DistrictId int    `bson:"districtId" json:"districtId"`
-	Address    string `bson:"address" json:"address"`
+	HospitalCode int    `bson:"hospitalCode" json:"hospitalCode"`
+	HospitalName string `bson:"hospitalName" json:"hospitalName"`
+	DistrictCode int    `bson:"districtCode" json:"districtCode"`
 }
 
-func GetHospitalsByProvince(client *mongo.Client, provinceId int) []Hospital {
+func GetHospitalsByProvince(client *mongo.Client, provinceCode int) []Hospital {
 	//client := mongodb.GetClient()
 
 	collection := client.Database("hospitals").Collection("hospitals")
 
-	filter := bson.D{{Key: "provinceId", Value: provinceId}}
+	filter := bson.D{{Key: "provinceCode", Value: provinceCode}}
 
 	cursor, _ := collection.Find(context.TODO(), filter)
 	defer cursor.Close(context.TODO())
@@ -38,11 +36,11 @@ func GetHospitalsByProvince(client *mongo.Client, provinceId int) []Hospital {
 	return hospitals
 }
 
-func GetHospitalsByDistrict(client *mongo.Client, districtId int) []Hospital {
+func GetHospitalsByDistrict(client *mongo.Client, districtCode int) []Hospital {
 
 	collection := client.Database("hospitals").Collection("hospitals")
 
-	filter := bson.D{{Key: "districtId", Value: districtId}}
+	filter := bson.D{{Key: "districtCode", Value: districtCode}}
 
 	cursor, _ := collection.Find(context.TODO(), filter)
 	defer cursor.Close(context.TODO())

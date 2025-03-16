@@ -2,9 +2,11 @@ package main
 
 import (
 	"backend/api"
+	"backend/helper"
 	"backend/mongodb"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -29,10 +31,10 @@ func main() {
 	// Register your API handlers
 	mux.HandleFunc("/api/auth/login", handleLogin).Methods("POST")
 	mux.HandleFunc("/api/auth/register", handleRegister).Methods("POST")
-	mux.HandleFunc("/api/districts/{provinceId}", handleGetDistrictsByProvince).Methods("GET")
-	mux.HandleFunc("/api/districts/{provinceId}", handleGetDistrictsByProvince).Methods("GET")
-	mux.HandleFunc("/api/hospitals/{provinceId}", handleGetHospitalsByProvince).Methods("GET")
-	mux.HandleFunc("/api/hospitals/district/{districtId}", handleGetHospitalsByDistrict).Methods("GET")
+	mux.HandleFunc("/api/districts/{provinceCode}", handleGetDistrictsByProvince).Methods("GET")
+	mux.HandleFunc("/api/hospitals/{provinceCode}", handleGetHospitalsByProvince).Methods("GET")
+	mux.HandleFunc("/api/hospitals/district/{districtCode}", handleGetHospitalsByDistrict).Methods("GET")
+	mux.HandleFunc("/api/createDoctor", handleCreateDoctor).Methods("POST")
 
 	// Enable CORS
 	c := cors.New(cors.Options{
@@ -45,6 +47,11 @@ func main() {
 	handler := c.Handler(mux)
 
 	startServer(handler)
+}
+
+func handleCreateDoctor(w http.ResponseWriter, r *http.Request) {
+	doctor := helper.CreateHuman(client)
+	fmt.Println(doctor)
 }
 
 func startServer(handler http.Handler) {
@@ -69,9 +76,9 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {
-	provinceId, _ := strconv.Atoi(mux.Vars(r)["provinceId"])
+	provinceCode, _ := strconv.Atoi(mux.Vars(r)["provinceCode"])
 
-	districts := api.GetDistrictsByProvince(client, provinceId)
+	districts := api.GetDistrictsByProvince(client, provinceCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(districts); err != nil {
@@ -80,9 +87,9 @@ func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetHospitalsByProvince(w http.ResponseWriter, r *http.Request) {
-	provinceId, _ := strconv.Atoi(mux.Vars(r)["provinceId"])
+	provinceCode, _ := strconv.Atoi(mux.Vars(r)["provinceCode"])
 
-	hospitals := api.GetHospitalsByProvince(client, provinceId)
+	hospitals := api.GetHospitalsByProvince(client, provinceCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(hospitals); err != nil {
@@ -91,8 +98,8 @@ func handleGetHospitalsByProvince(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetHospitalsByDistrict(w http.ResponseWriter, r *http.Request) {
-	districtId, _ := strconv.Atoi(mux.Vars(r)["districtId"])
-	hospitals := api.GetHospitalsByDistrict(client, districtId)
+	districtCode, _ := strconv.Atoi(mux.Vars(r)["districtCode"])
+	hospitals := api.GetHospitalsByDistrict(client, districtCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(hospitals); err != nil {
@@ -145,3 +152,8 @@ collection.UpdateMany(
 		{"$set", bson.D{{"_id", helper.GenerateID(6)}}}, // Unset the 'id' field
 	},
 ) */
+
+/* func main() {
+	helper.Tester()
+}
+*/

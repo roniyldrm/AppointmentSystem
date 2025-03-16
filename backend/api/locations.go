@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,15 +9,15 @@ import (
 )
 
 type District struct {
-	IDa        int    `bson:"ida" json:"ida"`
-	Name       string `bson:"name" json:"name"`
-	ProvinceId int    `bson:"provinceId" json:"provinceId"`
+	DistrictCode string `bson:"districtCode" json:"districtCode"`
+	DistrictName string `bson:"districtName" json:"districtName"`
+	ProvinceCode int    `bson:"provinceCode" json:"provinceCode"`
 }
 
-func GetDistrictsByProvince(client *mongo.Client, provinceId int) []District {
+func GetDistrictsByProvince(client *mongo.Client, provinceCode int) []District {
 	collection := client.Database("locations").Collection("districts")
 
-	filter := bson.D{{Key: "provinceId", Value: provinceId}}
+	filter := bson.D{{Key: "provinceCode", Value: provinceCode}}
 
 	cursor, _ := collection.Find(context.TODO(), filter)
 	defer cursor.Close(context.TODO())
@@ -35,7 +34,7 @@ func GetDistrictsByProvince(client *mongo.Client, provinceId int) []District {
 	return districts
 }
 
-func PrintProvinces(client *mongo.Client) {
+/* func PrintProvinces(client *mongo.Client) {
 	collection := client.Database("locations").Collection("provinces")
 
 	cursor, err := collection.Find(context.TODO(), bson.M{})
@@ -54,4 +53,4 @@ func PrintProvinces(client *mongo.Client) {
 		}
 		fmt.Println(result.Name)
 	}
-}
+} */

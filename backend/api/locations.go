@@ -8,10 +8,29 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type Province struct {
+	Code int    `bson:"code" json:"code"`
+	Name string `bson:"name" json:"name"`
+}
+
 type District struct {
 	DistrictCode string `bson:"districtCode" json:"districtCode"`
 	DistrictName string `bson:"districtName" json:"districtName"`
 	ProvinceCode int    `bson:"provinceCode" json:"provinceCode"`
+}
+
+func GetAllProvinces(client *mongo.Client) []Province {
+	collection := client.Database("locations").Collection("provinces")
+
+	filter := bson.D{{}}
+
+	cursor, _ := collection.Find(context.TODO(), filter)
+	defer cursor.Close(context.TODO())
+
+	var provinces []Province
+	cursor.All(context.TODO(), &provinces)
+
+	return provinces
 }
 
 func GetDistrictsByProvince(client *mongo.Client, provinceCode int) []District {

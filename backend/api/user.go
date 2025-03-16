@@ -20,7 +20,7 @@ type User struct {
 	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
 }
 
-func Login(client *mongo.Client, info map[string]string) {
+func LoginUser(client *mongo.Client, info map[string]string) {
 	collection := client.Database("users").Collection("users")
 	filter := bson.D{{Key: "email", Value: info["email"]}}
 	var user User
@@ -29,18 +29,22 @@ func Login(client *mongo.Client, info map[string]string) {
 		fmt.Println("baba siz kimsiniz")
 	} else {
 		if user.Password != info["password"] {
-			fmt.Println("sie")
+			fmt.Println("yanlış")
 		} else {
 			fmt.Println("buyur kardesim")
 		}
 	}
 }
 
-func Register(client *mongo.Client, user User) {
+func RegisterUser(client *mongo.Client, user User) {
 	collection := client.Database("users").Collection("users")
 	user.UserCode = helper.GenerateID(8)
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
-	fmt.Print(user)
 	collection.InsertOne(context.TODO(), user)
+}
+
+func DeleteUser(client *mongo.Client, userCode string) {
+	collection := client.Database("users").Collection("users")
+	collection.FindOneAndDelete(context.TODO(), bson.D{{Key: "userCode", Value: userCode}})
 }

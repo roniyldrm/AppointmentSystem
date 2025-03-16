@@ -1,6 +1,7 @@
 package api
 
 import (
+	"backend/helper"
 	"context"
 	"log"
 
@@ -15,7 +16,6 @@ type Hospital struct {
 }
 
 func GetHospitalsByProvince(client *mongo.Client, provinceCode int) []Hospital {
-	//client := mongodb.GetClient()
 
 	collection := client.Database("hospitals").Collection("hospitals")
 
@@ -55,4 +55,15 @@ func GetHospitalsByDistrict(client *mongo.Client, districtCode int) []Hospital {
 	}
 
 	return hospitals
+}
+
+func DeleteHospital(client *mongo.Client, hospitalCode int) {
+	collection := client.Database("hospital").Collection("hospital")
+	collection.FindOneAndDelete(context.TODO(), bson.D{{Key: "hospitalCode", Value: hospitalCode}})
+}
+
+func CreateHospital(client *mongo.Client, hospital Hospital) {
+	collection := client.Database("hospitals").Collection("hospitals")
+	hospital.HospitalCode = helper.GenerateIntID(6)
+	collection.InsertOne(context.TODO(), hospital)
 }

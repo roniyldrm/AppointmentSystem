@@ -2,11 +2,9 @@ package main
 
 import (
 	"backend/api"
-	"backend/helper"
 	"backend/mongodb"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -29,12 +27,18 @@ func main() {
 	mux := mux.NewRouter()
 
 	// Register your API handlers
-	mux.HandleFunc("/api/auth/login", handleLogin).Methods("POST")
-	mux.HandleFunc("/api/auth/register", handleRegister).Methods("POST")
+	mux.HandleFunc("/api/auth/login", handleLoginUser).Methods("POST")
+	mux.HandleFunc("/api/auth/register", handleRegisterUser).Methods("POST")
+	mux.HandleFunc("/api/auth/user/{userCode}", handleDeleteUser).Methods("DELETE")
+	mux.HandleFunc("/api/provinces", handleGetAllProvinces).Methods("GET")
 	mux.HandleFunc("/api/districts/{provinceCode}", handleGetDistrictsByProvince).Methods("GET")
 	mux.HandleFunc("/api/hospitals/{provinceCode}", handleGetHospitalsByProvince).Methods("GET")
 	mux.HandleFunc("/api/hospitals/district/{districtCode}", handleGetHospitalsByDistrict).Methods("GET")
+	mux.HandleFunc("/api/hospital/{hospitalCode}", handleDeleteHospital).Methods("DELETE")
+	mux.HandleFunc("/api/hospital", handleCreateHospital).Methods("POST")
 	mux.HandleFunc("/api/createDoctor", handleCreateDoctor).Methods("POST")
+	mux.HandleFunc("/api/doctors/{hospitalCode}", handleGetDoctorsByHospital).Methods("GET")
+	mux.HandleFunc("/api/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
 
 	// Enable CORS
 	c := cors.New(cors.Options{
@@ -49,11 +53,6 @@ func main() {
 	startServer(handler)
 }
 
-func handleCreateDoctor(w http.ResponseWriter, r *http.Request) {
-	doctor := helper.CreateHuman(client)
-	fmt.Println(doctor)
-}
-
 func startServer(handler http.Handler) {
 	log.Println("Server started at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {
@@ -61,18 +60,33 @@ func startServer(handler http.Handler) {
 	}
 }
 
-func handleLogin(w http.ResponseWriter, r *http.Request) {
+func handleLoginUser(w http.ResponseWriter, r *http.Request) {
 	var log map[string]string
 	json.NewDecoder(r.Body).Decode(&log)
 
-	api.Login(client, log)
+	api.LoginUser(client, log)
 }
 
-func handleRegister(w http.ResponseWriter, r *http.Request) {
+func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user api.User
 	json.NewDecoder(r.Body).Decode(&user)
 
-	api.Register(client, user)
+	api.RegisterUser(client, user)
+}
+
+func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	api.DeleteUser(client, userCode)
+}
+
+func handleGetAllProvinces(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	provinces := api.GetAllProvinces(client)
+	if err := json.NewEncoder(w).Encode(provinces); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +119,41 @@ func handleGetHospitalsByDistrict(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(hospitals); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func handleDeleteHospital(w http.ResponseWriter, r *http.Request) {
+	hospitalCode, _ := strconv.Atoi(mux.Vars(r)["hospitalCode"])
+
+	api.DeleteHospital(client, hospitalCode)
+}
+
+func handleCreateHospital(w http.ResponseWriter, r *http.Request) {
+	var hospital api.Hospital
+	json.NewDecoder(r.Body).Decode(&hospital)
+	api.CreateHospital(client, hospital)
+}
+
+func handleCreateDoctor(w http.ResponseWriter, r *http.Request) {
+	var doctor api.Doctor
+	json.NewDecoder(r.Body).Decode(&doctor)
+	api.CreateDoctor(client, doctor)
+}
+
+func handleGetDoctorsByHospital(w http.ResponseWriter, r *http.Request) {
+	hospitalCode, _ := strconv.Atoi(mux.Vars(r)["hospitalCode"])
+
+	doctors := api.GetDoctorsByHospital(client, hospitalCode)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(doctors); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleDeleteDoctor(w http.ResponseWriter, r *http.Request) {
+	doctorCode := mux.Vars(r)["doctorCode"]
+
+	api.DeleteDoctor(client, doctorCode)
 }
 
 /* func main() {
@@ -154,6 +203,12 @@ collection.UpdateMany(
 ) */
 
 /* func main() {
-	helper.Tester()
-}
-*/
+	client = mongodb.ConnectToDB()
+	//defer client.Disconnect(context.TODO())
+	defer func() {
+		if err := client.Disconnect(context.TODO()); err != nil {
+			log.Println("Error disconnecting MongoDB:", err)
+		}
+	}()
+	helper.Tester(client)
+} */

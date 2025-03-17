@@ -8,12 +8,12 @@ var names []string
 var surnames []string
 
 type Doctor struct {
-	DoctorCode   string         `bson:"doctorCode" json:"doctorCode"`
-	DoctorName   string         `bson:"doctorName" json:"doctorName"`
-	Field        int            `bson:"field" json:"field"`
-	HospitalCode int            `bson:"hospitalCode" json:"hospitalCode"`
-	WorkHours    []WorkHours    `bson:"workHours" json:"workHours"`
-	Appointments []Appointments `bson:"appointments" json:"appointments"`
+	DoctorCode   string            `bson:"doctorCode" json:"doctorCode"`
+	DoctorName   string            `bson:"doctorName" json:"doctorName"`
+	FieldCode    int               `bson:"fieldCode" json:"fieldCode"`
+	HospitalCode int               `bson:"hospitalCode" json:"hospitalCode"`
+	WorkHours    []WorkHours       `bson:"workHours" json:"workHours"`
+	Appointments []AppointmentTime `bson:"appointments" json:"appointments"`
 }
 
 type WorkHours struct {
@@ -21,14 +21,21 @@ type WorkHours struct {
 	End   string `bson:"end" json:"end"`
 }
 
-type Appointments struct {
+type AppointmentTime struct {
 	Date string `bson:"date" json:"date"`
 	Time string `bson:"time" json:"time"`
 }
 
+type Appointment struct {
+	AppointmentCode string          `bson:"appointmentCode" json:"appointmentCode"`
+	AppointmentTime AppointmentTime `bson:"appointmentTime" json:"appointmentTime"`
+	DoctorCode      string          `bson:"doctorCode" json:"doctorCode"`
+	UserCode        string          `bson:"userCode" json:"userCode"`
+}
+
 // a function to fill every single empty position
 /* func FillHospitals(client *mongo.Client) {
-	collection := client.Database("hospitals").Collection("doctors")
+	collection := client.Database("healthcare").Collection("doctors")
 	namesFile, err := ioutil.ReadFile("helper/names/isimler.json")
 	if err != nil {
 		fmt.Println(err)
@@ -46,7 +53,7 @@ type Appointments struct {
 			doctors := api.GetDoctorsByHospital(client, hospital.HospitalCode)
 			var fieldCheck [10]bool
 			for _, doctor := range doctors {
-				fieldCheck[doctor.Field] = true
+				fieldCheck[doctor.FieldCode] = true
 			}
 			for index, value := range fieldCheck {
 				if !value {
@@ -54,7 +61,7 @@ type Appointments struct {
 					doctor := Doctor{
 						DoctorCode:   GenerateID(6),
 						DoctorName:   CreateName(),
-						Field:        index,
+						FieldCode:        index,
 						HospitalCode: hospital.HospitalCode,
 						WorkHours:    []WorkHours{{Start: "09:00", End: "17:00"}},
 					}

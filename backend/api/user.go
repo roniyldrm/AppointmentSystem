@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -34,7 +34,7 @@ type LoginResponse struct {
 type Claims struct {
 	UserCode string `json:"userCode"`
 	Role     string `json:"role"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 var secretKey = []byte("supersecretkey1234")
@@ -111,17 +111,42 @@ func generateJWT(userCode, userRole string) (string, error) {
 	claims := Claims{
 		UserCode: userCode,
 		Role:     userRole,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // use NumericDate here
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte("your-secret-key"))
+}
 
-	tokenString, err := token.SignedString(secretKey)
+func RefreshToken(refreshToken string) (string, error) {
+	token, err := jwt.ParseWithClaims(refreshToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+
+	if err != nil {
+		return "", errors.New("invalid refresh token")
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return "", errors.New("invalid refresh token")
+	}
+
+	expirationTime := time.Now().Add(15 * time.Minute)
+	newClaims := Claims{
+		UserCode: claims.UserCode,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+	signedToken, err := newToken.SignedString(secretKey)
 	if err != nil {
 		return "", err
 	}
 
-	return tokenString, nil
+	return signedToken, nil
 }

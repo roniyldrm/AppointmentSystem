@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -33,22 +34,62 @@ func CreateDoctor(client *mongo.Client, doctor Doctor) {
 	doctor.DoctorCode = helper.GenerateID(6)
 	doctor.CreatedAt = time.Now()
 	doctor.UpdatedAt = time.Now()
+	hospital, _ := GetHospital(client, doctor.HospitalCode)
+	if slices.Contains(hospital.Fields, doctor.Field) {
+		hospital.Fields = append(hospital.Fields, doctor.Field)
+		UpdateHospital(client, *hospital)
+	}
 	collection.InsertOne(context.TODO(), doctor)
 }
 
 func DeleteDoctor(client *mongo.Client, doctorCode string) {
 	collection := client.Database("healthcare").Collection("doctors")
-	collection.FindOneAndDelete(context.TODO(), bson.D{{Key: "doctorCode", Value: doctorCode}})
+	doctor, err := GetDoctor(client, doctorCode)
+	if err != nil || doctor == nil {
+		log.Println("Doctor not found:", err)
+		return
+	}
+	_, err = collection.DeleteOne(context.TODO(), bson.M{"doctorCode": doctorCode})
+	if err != nil {
+		log.Println("Error deleting doctor:", err)
+		return
+	}
+	hospital, err := GetHospital(client, doctor.HospitalCode)
+	if err != nil {
+		return
+	}
+	doctors, err := GetDoctorsByHospitalCode(client, doctor.HospitalCode)
+	if err != nil {
+		return
+	}
+	for _, doctorInHospital := range doctors {
+		if doctor.Field == doctorInHospital.Field {
+			return
+		}
+	}
+	hospital.Fields = helper.RemoveFromSlice(hospital.Fields, doctor.Field)
+
+	UpdateHospital(client, *hospital)
+
 }
 
 func UpdateDoctor(client *mongo.Client, doctor Doctor) {
 	collection := client.Database("healthcare").Collection("doctors")
 	doctor.UpdatedAt = time.Now()
-	collection.FindOneAndUpdate(context.TODO(), bson.D{{Key: "doctorCode", Value: doctor.DoctorCode}}, doctor)
+
+	_, err := collection.ReplaceOne(
+		context.TODO(),
+		bson.M{"hospitalCode": doctor.HospitalCode},
+		doctor,
+	)
+
+	if err != nil {
+		log.Println("Error updating hospital:", err)
+	}
 }
 
 func GetAllDoctors(client *mongo.Client) []Doctor {
-	collection := client.Database("healthcare").Collection("appointments")
+	collection := client.Database("healthcare").Collection("doctors")
 
 	filter := bson.D{{}}
 
@@ -62,7 +103,7 @@ func GetAllDoctors(client *mongo.Client) []Doctor {
 }
 
 func GetDoctor(client *mongo.Client, doctorCode string) (*Doctor, error) {
-	collection := client.Database("healthcare").Collection("appointments")
+	collection := client.Database("healthcare").Collection("doctors")
 
 	filter := bson.D{{Key: "doctorCode", Value: doctorCode}}
 	var doctor Doctor
@@ -79,28 +120,30 @@ func GetDoctor(client *mongo.Client, doctorCode string) (*Doctor, error) {
 	return &doctor, nil
 }
 
-func GetDoctorsByHospitalCode(client *mongo.Client, hospitalCode int) []Doctor {
+func GetDoctorsByHospitalCode(client *mongo.Client, hospitalCode int) ([]Doctor, error) {
 	collection := client.Database("healthcare").Collection("doctors")
 
 	filter := bson.D{{Key: "hospitalCode", Value: hospitalCode}}
 
-	cursor, _ := collection.Find(context.TODO(), filter)
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		return nil, fmt.Errorf("error finding doctors: %v", err)
+	}
 	defer cursor.Close(context.TODO())
 
 	var doctors []Doctor
 	for cursor.Next(context.TODO()) {
 		var doctor Doctor
 		if err := cursor.Decode(&doctor); err != nil {
-			log.Println("Cursor decoding error:", err)
-			return nil
+			return nil, fmt.Errorf("error decoding doctor: %v", err)
 		}
 		doctors = append(doctors, doctor)
 	}
-	return doctors
+	return doctors, nil
 }
 
 func AddAppointmentToDoctor(client *mongo.Client, doctorCode, appointmentCode string) error {
-	fmt.Println(doctorCode +" " + appointmentCode)
+	fmt.Println(doctorCode + " " + appointmentCode)
 	collection := client.Database("hospitals").Collection("doctors")
 	filter := bson.M{"doctorCode": doctorCode}
 	update := bson.M{"$push": bson.M{"appointments": appointmentCode}}

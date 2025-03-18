@@ -3,6 +3,7 @@ package api
 import (
 	"backend/helper"
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -14,7 +15,7 @@ type Hospital struct {
 	HospitalCode int       `bson:"hospitalCode" json:"hospitalCode"`
 	HospitalName string    `bson:"hospitalName" json:"hospitalName"`
 	DistrictCode int       `bson:"districtCode" json:"districtCode"`
-	Fields       []Field   `bson:"fields" json:"fields"`
+	Fields       []int     `bson:"fields" json:"fields"`
 	CreatedAt    time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `bson:"updatedAt" json:"updatedAt"`
 }
@@ -31,6 +32,23 @@ func GetAllHospitals(client *mongo.Client) []Hospital {
 	cursor.All(context.TODO(), &hospitals)
 
 	return hospitals
+}
+
+func GetHospital(client *mongo.Client, hospitalCode int) (*Hospital, error) {
+	collection := client.Database("healthcare").Collection("hospitals")
+
+	filter := bson.D{{Key: "hospitalCode", Value: hospitalCode}}
+	var hospital Hospital
+
+	err := collection.FindOne(context.TODO(), filter).Decode(&hospital)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("no such doctor")
+		}
+		return nil, err
+	}
+
+	return &hospital, nil
 }
 
 func GetHospitalsByProvince(client *mongo.Client, provinceCode int) []Hospital {
@@ -78,6 +96,14 @@ func GetHospitalsByDistrict(client *mongo.Client, districtCode int) []Hospital {
 func DeleteHospital(client *mongo.Client, hospitalCode int) {
 	collection := client.Database("healthcare").Collection("hospitals")
 	collection.FindOneAndDelete(context.TODO(), bson.D{{Key: "hospitalCode", Value: hospitalCode}})
+	doctors, err := GetDoctorsByHospitalCode(client, hospitalCode)
+	if err != nil {
+		return
+	}
+	for _, doctor := range doctors {
+		DeleteDoctor(client, doctor.DoctorCode)
+	}
+
 }
 
 func CreateHospital(client *mongo.Client, hospital Hospital) {
@@ -91,5 +117,14 @@ func CreateHospital(client *mongo.Client, hospital Hospital) {
 func UpdateHospital(client *mongo.Client, hospital Hospital) {
 	collection := client.Database("healthcare").Collection("hospitals")
 	hospital.UpdatedAt = time.Now()
-	collection.FindOneAndUpdate(context.TODO(), bson.D{{Key: "hospitalCode", Value: hospital.HospitalCode}}, hospital)
+
+	_, err := collection.ReplaceOne(
+		context.TODO(),
+		bson.M{"hospitalCode": hospital.HospitalCode},
+		hospital,
+	)
+
+	if err != nil {
+		log.Println("Error updating hospital:", err)
+	}
 }

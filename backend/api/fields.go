@@ -1,9 +1,6 @@
 package api
 
 import (
-	"context"
-
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -12,23 +9,17 @@ type Field struct {
 	FieldName string `bson:"fieldName" json:"fieldName"`
 }
 
-func GetFieldsByProvince(client *mongo.Client, provinceCode int) []Field {
+func GetFieldsByProvince(client *mongo.Client, provinceCode int) []int {
 
 	var found [10]bool
+	var fields []int
 
-	collection := client.Database("healthcare").Collection("hospitals")
+	hospitals := GetHospitalsByProvince(client, provinceCode)
 
-	filter := bson.D{{Key: "provinceCode", Value: provinceCode}}
-
-	cursor, _ := collection.Find(context.TODO(), filter)
-	defer cursor.Close(context.TODO())
-
-	var fields []Field
-	for cursor.Next(context.TODO()) {
-		var hospital Hospital
+	for _, hospital := range hospitals {
 		for _, field := range hospital.Fields {
-			if !found[field.FieldCode] {
-				found[field.FieldCode] = true
+			if !found[field] {
+				found[field] = true
 				fields = append(fields, field)
 			}
 		}
@@ -37,23 +28,17 @@ func GetFieldsByProvince(client *mongo.Client, provinceCode int) []Field {
 	return fields
 }
 
-func GetFieldsByDistrict(client *mongo.Client, districtCode int) []Field {
+func GetFieldsByDistrict(client *mongo.Client, districtCode int) []int {
 
 	var found [10]bool
+	var fields []int
 
-	collection := client.Database("healthcare").Collection("hospitals")
+	hospitals := GetHospitalsByDistrict(client, districtCode)
 
-	filter := bson.D{{Key: "districtCode", Value: districtCode}}
-
-	cursor, _ := collection.Find(context.TODO(), filter)
-	defer cursor.Close(context.TODO())
-
-	var fields []Field
-	for cursor.Next(context.TODO()) {
-		var hospital Hospital
+	for _, hospital := range hospitals {
 		for _, field := range hospital.Fields {
-			if !found[field.FieldCode] {
-				found[field.FieldCode] = true
+			if !found[field] {
+				found[field] = true
 				fields = append(fields, field)
 			}
 		}
@@ -63,7 +48,7 @@ func GetFieldsByDistrict(client *mongo.Client, districtCode int) []Field {
 }
 
 /* baseFields := []Field{
-	{FieldCode: 0, FieldName: "Dahiliye"},
+	{FieldCode: 1, FieldName: "Dahiliye"},
 	{FieldCode: 1, FieldName: "Çocuk Sağlığı ve Hastalıkları"},
 	{FieldCode: 2, FieldName: "Kulak Burun Boğaz Hastalıkları"},
 	{FieldCode: 3, FieldName: "Göz Hastalıkları"},

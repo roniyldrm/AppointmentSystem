@@ -41,7 +41,16 @@ func DeleteAppointment(client *mongo.Client, appointmentCode string) {
 func UpdateAppointment(client *mongo.Client, appointment Appointment) {
 	collection := client.Database("healthcare").Collection("appointments")
 	appointment.UpdatedAt = time.Now()
-	collection.FindOneAndUpdate(context.TODO(), bson.D{{Key: "appointmentCode", Value: appointment.AppointmentCode}}, appointment)
+
+	_, err := collection.ReplaceOne(
+		context.TODO(),
+		bson.M{"appointmentCode": appointment.AppointmentCode},
+		appointment,
+	)
+
+	if err != nil {
+		log.Println("Error updating appointment:", err)
+	}
 }
 
 func GetAllAppointments(client *mongo.Client) []Appointment {
@@ -58,10 +67,30 @@ func GetAllAppointments(client *mongo.Client) []Appointment {
 	return appointments
 }
 
-func GetAppointmentsByDoctorCode(client *mongo.Client, doctorCode int) []Appointment {
+func GetAppointmentsByDoctorCode(client *mongo.Client, doctorCode string) []Appointment {
 	collection := client.Database("healthcare").Collection("appointments")
 
 	filter := bson.D{{Key: "doctorCode", Value: doctorCode}}
+
+	cursor, _ := collection.Find(context.TODO(), filter)
+	defer cursor.Close(context.TODO())
+
+	var appointments []Appointment
+	for cursor.Next(context.TODO()) {
+		var appointment Appointment
+		if err := cursor.Decode(&appointments); err != nil {
+			log.Println("Cursor decoding error:", err)
+			return nil
+		}
+		appointments = append(appointments, appointment)
+	}
+	return appointments
+}
+
+func GetAppointmentsByUserCode(client *mongo.Client, userCode string) []Appointment {
+	collection := client.Database("healthcare").Collection("appointments")
+
+	filter := bson.D{{Key: "userCode", Value: userCode}}
 
 	cursor, _ := collection.Find(context.TODO(), filter)
 	defer cursor.Close(context.TODO())

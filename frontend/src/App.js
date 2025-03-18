@@ -1,47 +1,19 @@
-import { useEffect, useState } from "react";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import MainPage from "./components/MainPage"; // Import MainPage
+import LoginPage from "./components/LoginPage"; // Import LoginPage
+import RegisterPage from "./components/RegisterPage"; // Import LoginPage
 
-function App() {
-  const [districts, setDistricts] = useState([]);
-  const [error, setError] = useState(null);
-  const [provinceId, setProvinceId] = useState(0);
-
-  useEffect(() => {
-    if (!provinceId) return;
-    
-    fetch(`http://localhost:8080/api/location/districts/${provinceId}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch districts");
-        }
-        return res.json();
-      })
-      .then((data) => setDistricts(data))
-      .catch((err) => setError(err.message));
-  }, [provinceId]);
-  console.log(error)
-/*   if (error) return <p>Error: {error}</p>;
-  if (!districts.length) return <p>No districts found.</p>; */
-
+const App = () => {
   return (
-    <>
-    <input
-        id="provinceInput"
-        type="number"
-        placeholder="Enter Province ID"
-      />
-    <button onClick={() => setProvinceId(document.getElementById("provinceInput").value)}> BAS </button>
-    <h1>{provinceId}</h1>
-    
-    <ul>
-      {districts ?
-      (districts.map((district) => (
-        <li key={district.id}>{district.name}</li>
-      )))
-      : 
-      <p>No districts found.</p>}
-    </ul>
-    </>
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Routes>
+    </Router>
   );
-}
+};
 
-export default App
+export default App;

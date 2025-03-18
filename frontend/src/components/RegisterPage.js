@@ -1,28 +1,43 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 
 const RegisterPage = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
+    const handleRegister = async (e) => {
     e.preventDefault();
+    setError(""); 
+    setLoading(true);
+    const role = "user"
 
-    // Simple form validation
-    if (!username || !email || !password) {
-      setErrorMessage("Please fill in all fields.");
-      return;
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, role }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Something went wrong!");
+        console.log(data)
+      } else {
+        const data = await response.json();
+        alert("Login Successful!");
+        console.log(data)
+      }
+    } catch (err) {
+      setError("An error occurred while logging in.");
+    } finally {
+      setLoading(false); 
     }
-
-    // Simulate registration logic
-    console.log("Registering user", { username, email, password });
-
-    // On successful registration, navigate to login page
-    navigate("/login");
   };
 
   const styles = {
@@ -133,7 +148,7 @@ const RegisterPage = () => {
     <div style={styles.container}>
       <div style={styles.formContainer}>
         <h2 style={styles.title}>Register</h2>
-        {errorMessage && <div style={styles.error}>{errorMessage}</div>}
+        {error && <div style={styles.error}>{error}</div>}
         <form onSubmit={handleRegister}>
           <input
             type="text"
@@ -157,7 +172,7 @@ const RegisterPage = () => {
             style={styles.input}
           />
           <button type="submit" style={styles.button}>
-            Register
+          {loading ? "Registering ..." : "Register"}
           </button>
         </form>
         <a href="/login" style={styles.loginLink}>

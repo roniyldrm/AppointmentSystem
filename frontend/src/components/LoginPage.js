@@ -6,13 +6,38 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const isDisabled = !email || !password
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    
-  };
+    setError(""); 
+    setLoading(true);
 
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Something went wrong!");
+        console.log(data)
+      } else {
+        const data = await response.json();
+        alert("Login Successful!");
+        console.log(data)
+      }
+    } catch (err) {
+      setError("An error occurred while logging in.");
+    } finally {
+      setLoading(false); 
+    }
+  };
   const styles = {
     container: {
       fontFamily: "Inter, sans-serif",
@@ -138,9 +163,10 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             style={styles.input}
           />
-          <button type="submit"   style={isDisabled ? styles.buttonDisabled : styles.button}
-  disabled={isDisabled}>
-            Login
+          <button type="submit"   
+            style={isDisabled ? styles.buttonDisabled : styles.button}
+            disabled={isDisabled}>
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
         {error && <div style={styles.error}>{error}</div>}

@@ -4,6 +4,7 @@ import (
 	"backend/helper"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,7 +24,7 @@ type User struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
+	Email    string ` json:"email"`
 	Password string `json:"password"`
 }
 
@@ -47,6 +48,8 @@ func LoginUser(client *mongo.Client, input LoginRequest) (string, error) {
 	if err != nil {
 		return "", errors.New("no such user")
 	}
+	fmt.Println("Stored Hash:", user.Password)
+	fmt.Println("Input Password:", input.Password)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
 	if err != nil {
@@ -107,12 +110,29 @@ func GetAllUsers(client *mongo.Client) []User {
 	return users
 }
 
+func GetUser(client *mongo.Client, userCode string) (*User, error) {
+	collection := client.Database("users").Collection("users")
+
+	filter := bson.D{{Key: "userCode", Value: userCode}}
+	var user User
+
+	err := collection.FindOne(context.TODO(), filter).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("no such doctor")
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func generateJWT(userCode, userRole string) (string, error) {
 	claims := Claims{
 		UserCode: userCode,
 		Role:     userRole,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // use NumericDate here
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 		},
 	}
 

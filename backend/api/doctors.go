@@ -35,7 +35,7 @@ func CreateDoctor(client *mongo.Client, doctor Doctor) {
 	doctor.CreatedAt = time.Now()
 	doctor.UpdatedAt = time.Now()
 	hospital, _ := GetHospital(client, doctor.HospitalCode)
-	if slices.Contains(hospital.Fields, doctor.Field) {
+	if !slices.Contains(hospital.Fields, doctor.Field) {
 		hospital.Fields = append(hospital.Fields, doctor.Field)
 		UpdateHospital(client, *hospital)
 	}
@@ -111,10 +111,9 @@ func GetDoctor(client *mongo.Client, doctorCode string) (*Doctor, error) {
 	err := collection.FindOne(context.TODO(), filter).Decode(&doctor)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			// Handle the case where no doctor is found
 			return nil, errors.New("no such doctor")
 		}
-		return nil, err // return the original error if something went wrong
+		return nil, err
 	}
 
 	return &doctor, nil

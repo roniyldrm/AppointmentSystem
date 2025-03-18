@@ -26,11 +26,12 @@ func main() {
 	mux := mux.NewRouter()
 
 	// Authentication & User
-	mux.HandleFunc("/api/auth/login", handleLoginUser).Methods("POST")
 	mux.HandleFunc("/api/auth/register", handleRegisterUser).Methods("POST")
+	mux.HandleFunc("/api/auth/login", handleLoginUser).Methods("POST")
 	mux.HandleFunc("/api/auth/refresh", handleRefreshToken).Methods("POST")
 	mux.HandleFunc("/api/user/{userCode}", handleDeleteUser).Methods("DELETE")
 	mux.HandleFunc("/api/users", handleGetAllUsers).Methods("GET")
+	mux.HandleFunc("/api/user/{userCode}", handleGetUser).Methods("GET")
 
 	//Location
 	mux.HandleFunc("/api/location/provinces", handleGetAllProvinces).Methods("GET")
@@ -48,24 +49,24 @@ func main() {
 	mux.HandleFunc("/api/fields/{districtCode}", handleGetFieldsByDistrict).Methods("GET")
 	//Doctor
 	mux.HandleFunc("/api/doctor", handleCreateDoctor).Methods("POST")
-	mux.HandleFunc("/api/doctors/{doctorCode}/appointments", handleAddAppointmentToDoctor).Methods("PATCH")
 	mux.HandleFunc("/api/doctors", handleGetAllDoctors).Methods("GET")
 	mux.HandleFunc("/api/doctor/{doctorCode}", handleGetDoctor).Methods("GET")
 	mux.HandleFunc("/api/doctors/{hospitalCode}", handleGetDoctorsByHospitalCode).Methods("GET")
+	mux.HandleFunc("/api/doctors/{doctorCode}/appointments", handleAddAppointmentToDoctor).Methods("PATCH")
 	mux.HandleFunc("/api/doctor", handleUpdateDoctor).Methods("PUT")
 	mux.HandleFunc("/api/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
 	//Appointment
 	mux.HandleFunc("/api/appointment", handleCreateAppointment).Methods("POST")
 	mux.HandleFunc("/api/appointments", handleGetAllAppointments).Methods("GET")
 	mux.HandleFunc("/api/appointments/{doctorCode}", handleGetAppointmentsByDoctorCode).Methods("GET")
-	mux.HandleFunc("/api/user/{userID}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
+	mux.HandleFunc("/api/user/{userCode}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
 	mux.HandleFunc("/api/appointment", handleUpdateAppointment).Methods("PUT")
 	mux.HandleFunc("/api/appointment/{appointmentCode}", handleDeleteAppointment).Methods("DELETE")
 	//Request
 	mux.HandleFunc("/api/appointment/cancelRequest", handleCreateAppointmentCancelRequest).Methods("POST")
 	mux.HandleFunc("/api/appointment/cancelRequests", handleGetAllAppointmentCancelRequests).Methods("GET")
 	mux.HandleFunc("/api/appointment/cancelRequests/{doctorCode}", handleGetAppointmentCancelRequestsByDoctorCode).Methods("GET")
-	mux.HandleFunc("/api/appointment/cancelRequests/{requestID}", handleUpdateCancelRequestStatus).Methods("PATCH")
+	mux.HandleFunc("/api/appointment/cancelRequests/{requestCode}", handleUpdateCancelRequestStatus).Methods("PATCH")
 	mux.HandleFunc("/api/appointment/cancelRequest", handleDeleteAppointmentCancelRequest).Methods("DELETE")
 
 	c := cors.New(cors.Options{
@@ -122,7 +123,7 @@ func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 func handleRefreshToken(w http.ResponseWriter, r *http.Request) {
 	var request struct {
-		RefreshToken string `json:"refresh_token"`
+		RefreshToken string `json:"refreshToken"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -161,6 +162,21 @@ func handleGetAllUsers(w http.ResponseWriter, r *http.Request) {
 
 	users := api.GetAllUsers(client)
 	if err := json.NewEncoder(w).Encode(users); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleGetUser(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	user, err := api.GetUser(client, userCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

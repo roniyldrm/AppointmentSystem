@@ -1,20 +1,20 @@
-package helper
+package data
 
 import (
+	"backend/api"
+	"backend/helper"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"math/rand"
+	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var names []string
 var surnames []string
-
-type Doctor struct {
-	DoctorCode   string            `bson:"doctorCode" json:"doctorCode"`
-	DoctorName   string            `bson:"doctorName" json:"doctorName"`
-	FieldCode    int               `bson:"fieldCode" json:"fieldCode"`
-	HospitalCode int               `bson:"hospitalCode" json:"hospitalCode"`
-	WorkHours    []WorkHours       `bson:"workHours" json:"workHours"`
-	Appointments []AppointmentTime `bson:"appointments" json:"appointments"`
-}
 
 type WorkHours struct {
 	Start string `bson:"start" json:"start"`
@@ -35,7 +35,6 @@ type Appointment struct {
 
 // a function to fill every single empty position
 /* func FillHospitals(client *mongo.Client) {
-	collection := client.Database("healthcare").Collection("doctors")
 	namesFile, err := ioutil.ReadFile("helper/names/isimler.json")
 	if err != nil {
 		fmt.Println(err)
@@ -46,32 +45,69 @@ type Appointment struct {
 	}
 	json.Unmarshal(namesFile, &names)
 	json.Unmarshal(surnamesFile, &surnames)
-	provinces := api.GetAllProvinces(client)
-	for _, province := range provinces {
-		hospitals := api.GetHospitalsByProvince(client, province.Code)
-		for _, hospital := range hospitals {
-			doctors := api.GetDoctorsByHospital(client, hospital.HospitalCode)
-			var fieldCheck [10]bool
-			for _, doctor := range doctors {
-				fieldCheck[doctor.FieldCode] = true
-			}
-			for index, value := range fieldCheck {
-				if !value {
-					fmt.Println("yok abi yap")
-					doctor := Doctor{
-						DoctorCode:   GenerateID(6),
-						DoctorName:   CreateName(),
-						FieldCode:        index,
-						HospitalCode: hospital.HospitalCode,
-						WorkHours:    []WorkHours{{Start: "09:00", End: "17:00"}},
-					}
-					collection.InsertOne(context.TODO(), doctor)
+
+	hospitals := api.GetHospitalsByProvince(client, 34)
+	for _, hospital := range hospitals {
+		doctors, _ := api.GetDoctorsByHospitalCode(client, hospital.HospitalCode)
+		var fieldCheck [10]bool
+		for _, doctor := range doctors {
+			fieldCheck[doctor.FieldCode] = true
+		}
+		for index, value := range fieldCheck {
+			if !value {
+				doctor := api.Doctor{
+					DoctorName:   CreateName(),
+					FieldCode:    index,
+					HospitalCode: hospital.HospitalCode,
+					WorkHours:    api.WorkHours{Start: "09:00", End: "17:00"},
 				}
+
+				api.CreateDoctor(client, doctor)
 			}
 		}
-
 	}
 } */
+
+func FillHospitals(client *mongo.Client) {
+	namesFile, err := ioutil.ReadFile("helper/names/isimler.json")
+	if err != nil {
+		log.Fatalf("Failed to read isimler.json: %v", err)
+	}
+	surnamesFile, err := ioutil.ReadFile("helper/names/soyisimler.json")
+	if err != nil {
+		log.Fatalf("Failed to read soyisimler.json: %v", err)
+	}
+	json.Unmarshal(namesFile, &names)
+	json.Unmarshal(surnamesFile, &surnames)
+
+	var allDoctors []interface{}
+
+	hospitals := api.GetAllHospitals(client)
+	for _, hospital := range hospitals {
+		doctors, _ := api.GetDoctorsByHospitalCode(client, hospital.HospitalCode)
+		var fieldCheck [10]bool
+		for _, doctor := range doctors {
+			fieldCheck[doctor.FieldCode] = true
+		}
+		for index, value := range fieldCheck {
+			if !value {
+				allDoctors = append(allDoctors, api.Doctor{
+					DoctorCode:   helper.GenerateID(6),
+					DoctorName:   CreateName(),
+					FieldCode:    index,
+					HospitalCode: hospital.HospitalCode,
+					WorkHours:    api.WorkHours{Start: "09:00", End: "17:00"},
+					CreatedAt:    time.Now(),
+					UpdatedAt:    time.Now(),
+				})
+				//allDoctors = append(allDoctors, doctor)
+				//api.CreateDoctor(client, doctor)
+			}
+		}
+	}
+
+	api.InsertManyDoctors(client, allDoctors)
+}
 
 func CreateName() string {
 	prepName := ""
@@ -83,7 +119,19 @@ func CreateName() string {
 	}
 	prepName += names[rand.Intn(amountOfNames)] + " "
 	prepName += surnames[rand.Intn(amountOfSurnames)]
+	fmt.Println(prepName)
 	return prepName
+}
+func RemoveAllDoctorsInProvince(client *mongo.Client, provinceCode int) {
+	hospitals := api.GetHospitalsByProvince(client, provinceCode)
+	for _, hospital := range hospitals {
+		fmt.Println(hospital.HospitalName)
+		doctors, _ := api.GetDoctorsByHospitalCode(client, hospital.HospitalCode)
+		for _, doctor := range doctors {
+			fmt.Println(client, doctor.DoctorName)
+			api.DeleteDoctor(client, doctor.DoctorCode)
+		}
+	}
 }
 
 /* func Tester() {

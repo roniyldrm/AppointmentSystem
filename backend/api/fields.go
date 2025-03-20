@@ -1,6 +1,9 @@
 package api
 
 import (
+	"backend/helper"
+	"slices"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -45,6 +48,40 @@ func GetFieldsByDistrict(client *mongo.Client, districtCode int) []int {
 	}
 
 	return fields
+}
+
+func DoctorDeletionFieldCheck(client *mongo.Client, hospitalCode int, fieldCode int) {
+	hospital, err := GetHospital(client, hospitalCode)
+	if err != nil {
+		return
+	}
+	doctors, err := GetDoctorsByHospitalCode(client, hospitalCode)
+	if err != nil {
+		return
+	}
+	for _, doctor := range doctors {
+		if fieldCode == doctor.FieldCode {
+			return
+		}
+	}
+	hospital.Fields = helper.RemoveFromSlice(hospital.Fields, fieldCode)
+	UpdateHospital(client, *hospital)
+}
+
+func DoctorCreationFieldCheck(client *mongo.Client, hospitalCode int, fieldCode int) {
+	hospital, _ := GetHospital(client, hospitalCode)
+	if !slices.Contains(hospital.Fields, fieldCode) {
+		hospital.Fields = append(hospital.Fields, fieldCode)
+		UpdateHospital(client, *hospital)
+	}
+}
+
+func DoctorUpdateFieldCheck(client *mongo.Client, updatedDoctor Doctor) {
+	doctor, _ := GetDoctor(client, updatedDoctor.DoctorCode)
+	if doctor.FieldCode != updatedDoctor.FieldCode || doctor.HospitalCode != updatedDoctor.HospitalCode {
+		DoctorDeletionFieldCheck(client, doctor.HospitalCode, doctor.FieldCode)
+		DoctorCreationFieldCheck(client, updatedDoctor.HospitalCode, updatedDoctor.FieldCode)
+	}
 }
 
 /* baseFields := []Field{

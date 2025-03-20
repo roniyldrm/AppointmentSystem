@@ -3,6 +3,7 @@ package api
 import (
 	"backend/helper"
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -30,12 +31,12 @@ func CreateAppointment(client *mongo.Client, appointment Appointment) {
 	appointment.CreatedAt = time.Now()
 	appointment.UpdatedAt = time.Now()
 	collection.InsertOne(context.TODO(), appointment)
-	AddAppointmentToDoctor(client, appointment.DoctorCode, appointment.AppointmentCode)
 }
 
-func DeleteAppointment(client *mongo.Client, appointmentCode string) {
+func DeleteAppointment(client *mongo.Client, appointmentCode string) error {
 	collection := client.Database("healthcare").Collection("appointments")
-	collection.FindOneAndDelete(context.TODO(), bson.D{{Key: "appointmentCode", Value: appointmentCode}})
+	_, err := collection.DeleteOne(context.TODO(), bson.M{"appointmentCode": appointmentCode})
+	return err
 }
 
 func UpdateAppointment(client *mongo.Client, appointment Appointment) {
@@ -65,6 +66,21 @@ func GetAllAppointments(client *mongo.Client) []Appointment {
 	cursor.All(context.TODO(), &appointments)
 
 	return appointments
+}
+
+func GetAppointment(client *mongo.Client, appointmentCode string) (*Appointment, error) {
+	collection := client.Database("healthcare").Collection("appointments")
+
+	filter := bson.D{{Key: "appointmentCode", Value: appointmentCode}}
+	var appointment Appointment
+	err := collection.FindOne(context.TODO(), filter).Decode(&appointment)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("appointment not found")
+		}
+		return nil, err
+	}
+	return &appointment, nil
 }
 
 func GetAppointmentsByDoctorCode(client *mongo.Client, doctorCode string) []Appointment {

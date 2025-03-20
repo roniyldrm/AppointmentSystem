@@ -15,6 +15,7 @@ type Hospital struct {
 	HospitalCode int       `bson:"hospitalCode" json:"hospitalCode"`
 	HospitalName string    `bson:"hospitalName" json:"hospitalName"`
 	DistrictCode int       `bson:"districtCode" json:"districtCode"`
+	ProvinceCode int       `bson:"provinceCode" json:"provinceCode"`
 	Fields       []int     `bson:"fields" json:"fields"`
 	CreatedAt    time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `bson:"updatedAt" json:"updatedAt"`
@@ -108,7 +109,7 @@ func DeleteHospital(client *mongo.Client, hospitalCode int) {
 
 func CreateHospital(client *mongo.Client, hospital Hospital) {
 	collection := client.Database("healthcare").Collection("hospitals")
-	hospital.HospitalCode = helper.GenerateIntID(6)
+	hospital.HospitalCode = helper.GenerateIntID(5)
 	hospital.CreatedAt = time.Now()
 	hospital.UpdatedAt = time.Now()
 	collection.InsertOne(context.TODO(), hospital)

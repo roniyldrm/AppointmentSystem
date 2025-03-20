@@ -52,12 +52,12 @@ func main() {
 	mux.HandleFunc("/api/doctors", handleGetAllDoctors).Methods("GET")
 	mux.HandleFunc("/api/doctor/{doctorCode}", handleGetDoctor).Methods("GET")
 	mux.HandleFunc("/api/doctors/{hospitalCode}", handleGetDoctorsByHospitalCode).Methods("GET")
-	mux.HandleFunc("/api/doctors/{doctorCode}/appointments", handleAddAppointmentToDoctor).Methods("PATCH")
 	mux.HandleFunc("/api/doctor", handleUpdateDoctor).Methods("PUT")
 	mux.HandleFunc("/api/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
 	//Appointment
 	mux.HandleFunc("/api/appointment", handleCreateAppointment).Methods("POST")
 	mux.HandleFunc("/api/appointments", handleGetAllAppointments).Methods("GET")
+	mux.HandleFunc("/api/appointment/{appointmentCode}", handleGetAppointment).Methods("GET")
 	mux.HandleFunc("/api/appointments/{doctorCode}", handleGetAppointmentsByDoctorCode).Methods("GET")
 	mux.HandleFunc("/api/user/{userCode}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
 	mux.HandleFunc("/api/appointment", handleUpdateAppointment).Methods("PUT")
@@ -283,26 +283,6 @@ func handleCreateDoctor(w http.ResponseWriter, r *http.Request) {
 	api.CreateDoctor(client, doctor)
 }
 
-func handleAddAppointmentToDoctor(w http.ResponseWriter, r *http.Request) {
-	doctorCode := mux.Vars(r)["doctorCode"]
-	var req struct {
-		AppointmentCode string `json:"appointmentCode"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	err := api.AddAppointmentToDoctor(client, doctorCode, req.AppointmentCode)
-	if err != nil {
-		http.Error(w, "Failed to add appointment to doctor", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Appointment added successfully",
-	})
-}
-
 func handleGetAllDoctors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -373,6 +353,20 @@ func handleGetAllAppointments(w http.ResponseWriter, r *http.Request) {
 
 	appointments := api.GetAllAppointments(client)
 	if err := json.NewEncoder(w).Encode(appointments); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+func handleGetAppointment(w http.ResponseWriter, r *http.Request) {
+	appointmentCode := mux.Vars(r)["appointmentCode"]
+
+	appointment, err := api.GetAppointment(client, appointmentCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(appointment); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

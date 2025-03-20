@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"slices"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,10 +15,9 @@ import (
 type Doctor struct {
 	DoctorCode   string    `bson:"doctorCode" json:"doctorCode"`
 	DoctorName   string    `bson:"doctorName" json:"doctorName"`
-	Field        int       `bson:"field" json:"field"`
+	FieldCode    int       `bson:"field" json:"field"`
 	HospitalCode int       `bson:"hospitalCode" json:"hospitalCode"`
 	WorkHours    WorkHours `bson:"workHours" json:"workHours"`
-	Appointments []string  `bson:"appointments" json:"appointments"`
 	CreatedAt    time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `bson:"updatedAt" json:"updatedAt"`
 }
@@ -34,11 +32,7 @@ func CreateDoctor(client *mongo.Client, doctor Doctor) {
 	doctor.DoctorCode = helper.GenerateID(6)
 	doctor.CreatedAt = time.Now()
 	doctor.UpdatedAt = time.Now()
-	hospital, _ := GetHospital(client, doctor.HospitalCode)
-	if !slices.Contains(hospital.Fields, doctor.Field) {
-		hospital.Fields = append(hospital.Fields, doctor.Field)
-		UpdateHospital(client, *hospital)
-	}
+	DoctorCreationFieldCheck(client, doctor.HospitalCode, doctor.FieldCode)
 	collection.InsertOne(context.TODO(), doctor)
 }
 
@@ -54,33 +48,17 @@ func DeleteDoctor(client *mongo.Client, doctorCode string) {
 		log.Println("Error deleting doctor:", err)
 		return
 	}
-	hospital, err := GetHospital(client, doctor.HospitalCode)
-	if err != nil {
-		return
-	}
-	doctors, err := GetDoctorsByHospitalCode(client, doctor.HospitalCode)
-	if err != nil {
-		return
-	}
-	for _, doctorInHospital := range doctors {
-		if doctor.Field == doctorInHospital.Field {
-			return
-		}
-	}
-	hospital.Fields = helper.RemoveFromSlice(hospital.Fields, doctor.Field)
-
-	UpdateHospital(client, *hospital)
-
+	DoctorDeletionFieldCheck(client, doctor.HospitalCode, doctor.FieldCode)
 }
 
-func UpdateDoctor(client *mongo.Client, doctor Doctor) {
+func UpdateDoctor(client *mongo.Client, updatedDoctor Doctor) {
 	collection := client.Database("healthcare").Collection("doctors")
-	doctor.UpdatedAt = time.Now()
-
+	DoctorUpdateFieldCheck(client, updatedDoctor)
+	updatedDoctor.UpdatedAt = time.Now()
 	_, err := collection.ReplaceOne(
 		context.TODO(),
-		bson.M{"hospitalCode": doctor.HospitalCode},
-		doctor,
+		bson.M{"doctorCode": updatedDoctor.DoctorCode},
+		updatedDoctor,
 	)
 
 	if err != nil {
@@ -111,7 +89,7 @@ func GetDoctor(client *mongo.Client, doctorCode string) (*Doctor, error) {
 	err := collection.FindOne(context.TODO(), filter).Decode(&doctor)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("no such doctor")
+			return nil, errors.New("doctor not found")
 		}
 		return nil, err
 	}
@@ -141,8 +119,13 @@ func GetDoctorsByHospitalCode(client *mongo.Client, hospitalCode int) ([]Doctor,
 	return doctors, nil
 }
 
-func AddAppointmentToDoctor(client *mongo.Client, doctorCode, appointmentCode string) error {
-	fmt.Println(doctorCode + " " + appointmentCode)
+func InsertManyDoctors(client *mongo.Client, doctors []interface{}) error {
+	collection := client.Database("healthcare").Collection("doctors")
+	_, err := collection.InsertMany(context.TODO(), doctors)
+	return err
+}
+
+/* func AddAppointmentToDoctor(client *mongo.Client, doctorCode, appointmentCode string) error {
 	collection := client.Database("hospitals").Collection("doctors")
 	filter := bson.M{"doctorCode": doctorCode}
 	update := bson.M{"$push": bson.M{"appointments": appointmentCode}}
@@ -152,3 +135,14 @@ func AddAppointmentToDoctor(client *mongo.Client, doctorCode, appointmentCode st
 	}
 	return nil
 }
+
+func RemoveAppointmentFromDoctor(client *mongo.Client, doctorCode, appointmentCode string) error {
+	collection := client.Database("hospitals").Collection("doctors")
+	filter := bson.M{"doctorCode": doctorCode}
+	update := bson.M{"$pull": bson.M{"appointments": appointmentCode}}
+	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return err
+	}
+	return nil
+} */

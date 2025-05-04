@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
-	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -33,25 +30,22 @@ import (
 } */
 
 func ConnectToDB() *mongo.Client {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	mongoURI := os.Getenv("MONGODB_URI")
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(mongoURI).SetServerAPIOptions(serverAPI)
+	// Using local MongoDB instance
+	mongoURI := "mongodb://localhost:27017"
 
-	// Create a new client and connect to the server
-	client, err := mongo.Connect(context.TODO(), opts)
+	// Connect to MongoDB
+	clientOptions := options.Client().ApplyURI(mongoURI)
+	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	// Send a ping to confirm a successful connection
-	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "ping", Value: 1}}).Err(); err != nil {
-		panic(err)
+	// Ensure the connection is working
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
 	}
-	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
+	fmt.Println("Successfully connected to MongoDB!")
 
 	return client
 }

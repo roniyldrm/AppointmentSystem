@@ -1,10 +1,12 @@
 package api
 
 import (
+	"backend/google"
 	"backend/helper"
 	"context"
 	"errors"
 	"log"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,6 +18,7 @@ type Appointment struct {
 	AppointmentTime AppointmentTime `bson:"appointmentTime" json:"appointmentTime"`
 	DoctorCode      string          `bson:"doctorCode" json:"doctorCode"`
 	UserCode        string          `bson:"userCode" json:"userCode"`
+	CalendarEventID string          `bson:"calendarEventID,omitempty" json:"calendarEventID,omitempty"`
 	CreatedAt       time.Time       `bson:"createdAt" json:"createdAt"`
 	UpdatedAt       time.Time       `bson:"updatedAt" json:"updatedAt"`
 }
@@ -25,18 +28,162 @@ type AppointmentTime struct {
 	Time string `bson:"time" json:"time"`
 }
 
-func CreateAppointment(client *mongo.Client, appointment Appointment) {
+type AppointmentDetails struct {
+	AppointmentCode string          `json:"appointmentCode"`
+	AppointmentTime AppointmentTime `json:"appointmentTime"`
+	Doctor          Doctor          `json:"doctor"`
+	User            User            `json:"user"`
+	Hospital        Hospital        `json:"hospital"`
+}
+
+var calendarService *google.GoogleCalendarService
+var useGoogleCalendar = false
+
+func init() {
+	// Initialize Google Calendar service if enabled
+	if os.Getenv("USE_GOOGLE_CALENDAR") == "true" {
+		var err error
+		calendarService, err = google.NewGoogleCalendarService()
+		if err != nil {
+			log.Println("Failed to initialize Google Calendar service:", err)
+		} else {
+			useGoogleCalendar = true
+			log.Println("Google Calendar service initialized successfully")
+		}
+	}
+}
+
+func CreateAppointment(client *mongo.Client, appointment Appointment) error {
 	collection := client.Database("healthcare").Collection("appointments")
 	appointment.AppointmentCode = helper.GenerateID(8)
 	appointment.CreatedAt = time.Now()
 	appointment.UpdatedAt = time.Now()
-	collection.InsertOne(context.TODO(), appointment)
+
+	// Get user and doctor details for email and calendar
+	user, err := GetUser(client, appointment.UserCode)
+	if err != nil {
+		log.Println("Error getting user:", err)
+		return err
+	}
+
+	doctor, err := GetDoctor(client, appointment.DoctorCode)
+	if err != nil {
+		log.Println("Error getting doctor:", err)
+		return err
+	}
+
+	hospital, err := GetHospital(client, doctor.HospitalCode)
+	if err != nil {
+		log.Println("Error getting hospital:", err)
+		return err
+	}
+
+	// Add to Google Calendar if enabled
+	if useGoogleCalendar {
+		// Parse date and time
+		dateTime := appointment.AppointmentTime.Date + "T" + appointment.AppointmentTime.Time + ":00"
+		startTime, err := time.Parse("2006-01-02T15:04:05", dateTime)
+		if err != nil {
+			log.Println("Error parsing appointment time:", err)
+		} else {
+			// Calculate end time (adding 15 minutes to start time)
+			endTime := startTime.Add(15 * time.Minute)
+
+			// Create calendar event
+			calendarID := os.Getenv("GOOGLE_CALENDAR_ID")
+			if calendarID == "" {
+				calendarID = "primary"
+			}
+
+			summary := "Medical Appointment with Dr. " + doctor.DoctorName
+			description := "Patient: " + user.UserCode + "\nDoctor: " + doctor.DoctorName
+			location := hospital.HospitalName
+
+			event, err := calendarService.AddAppointmentToCalendar(calendarID, summary, description, location, startTime, endTime)
+			if err != nil {
+				log.Println("Error adding to Google Calendar:", err)
+			} else {
+				// Store event ID in appointment
+				appointment.CalendarEventID = event.Id
+				log.Println("Added appointment to Google Calendar, EventID:", event.Id)
+			}
+		}
+	}
+
+	// Save appointment to database
+	_, err = collection.InsertOne(context.TODO(), appointment)
+	if err != nil {
+		return err
+	}
+
+	// Send email notification
+	err = helper.SendAppointmentConfirmation(
+		user.Email,
+		user.UserCode, // Should be user name, using userCode as placeholder
+		doctor.DoctorName,
+		hospital.HospitalName,
+		appointment.AppointmentTime.Date,
+		appointment.AppointmentTime.Time,
+	)
+	if err != nil {
+		log.Println("Error sending user email:", err)
+	}
+
+	// TODO: Get doctor's email and send notification
+	// For now, we'll skip this as we don't have doctor emails in the model
+
+	return nil
 }
 
 func DeleteAppointment(client *mongo.Client, appointmentCode string) error {
+	// Get appointment details before deletion
+	appointment, err := GetAppointment(client, appointmentCode)
+	if err != nil {
+		return err
+	}
+
+	// Get user and doctor details for email
+	user, _ := GetUser(client, appointment.UserCode)
+	doctor, _ := GetDoctor(client, appointment.DoctorCode)
+
+	// Remove from Google Calendar if enabled
+	if useGoogleCalendar && appointment.CalendarEventID != "" {
+		calendarID := os.Getenv("GOOGLE_CALENDAR_ID")
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		err := calendarService.DeleteAppointmentFromCalendar(calendarID, appointment.CalendarEventID)
+		if err != nil {
+			log.Println("Error removing from Google Calendar:", err)
+		} else {
+			log.Println("Removed appointment from Google Calendar, EventID:", appointment.CalendarEventID)
+		}
+	}
+
+	// Now delete the appointment
 	collection := client.Database("healthcare").Collection("appointments")
-	_, err := collection.DeleteOne(context.TODO(), bson.M{"appointmentCode": appointmentCode})
-	return err
+	_, err = collection.DeleteOne(context.TODO(), bson.M{"appointmentCode": appointmentCode})
+	if err != nil {
+		return err
+	}
+
+	// If we have user and doctor, send cancellation emails
+	if user != nil && doctor != nil {
+		hospital, _ := GetHospital(client, doctor.HospitalCode)
+		if hospital != nil {
+			helper.SendAppointmentCancellation(
+				user.Email,
+				user.UserCode, // Should be user name, using userCode as placeholder
+				doctor.DoctorName,
+				hospital.HospitalName,
+				appointment.AppointmentTime.Date,
+				appointment.AppointmentTime.Time,
+			)
+		}
+	}
+
+	return nil
 }
 
 func UpdateAppointment(client *mongo.Client, appointment Appointment) {
@@ -83,6 +230,38 @@ func GetAppointment(client *mongo.Client, appointmentCode string) (*Appointment,
 	return &appointment, nil
 }
 
+func GetAppointmentDetails(client *mongo.Client, appointmentCode string) (*AppointmentDetails, error) {
+	appointment, err := GetAppointment(client, appointmentCode)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := GetUser(client, appointment.UserCode)
+	if err != nil {
+		return nil, err
+	}
+
+	doctor, err := GetDoctor(client, appointment.DoctorCode)
+	if err != nil {
+		return nil, err
+	}
+
+	hospital, err := GetHospital(client, doctor.HospitalCode)
+	if err != nil {
+		return nil, err
+	}
+
+	details := &AppointmentDetails{
+		AppointmentCode: appointment.AppointmentCode,
+		AppointmentTime: appointment.AppointmentTime,
+		Doctor:          *doctor,
+		User:            *user,
+		Hospital:        *hospital,
+	}
+
+	return details, nil
+}
+
 func GetAppointmentsByDoctorCode(client *mongo.Client, doctorCode string) []Appointment {
 	collection := client.Database("healthcare").Collection("appointments")
 
@@ -92,14 +271,7 @@ func GetAppointmentsByDoctorCode(client *mongo.Client, doctorCode string) []Appo
 	defer cursor.Close(context.TODO())
 
 	var appointments []Appointment
-	for cursor.Next(context.TODO()) {
-		var appointment Appointment
-		if err := cursor.Decode(&appointments); err != nil {
-			log.Println("Cursor decoding error:", err)
-			return nil
-		}
-		appointments = append(appointments, appointment)
-	}
+	cursor.All(context.TODO(), &appointments)
 	return appointments
 }
 
@@ -112,13 +284,36 @@ func GetAppointmentsByUserCode(client *mongo.Client, userCode string) []Appointm
 	defer cursor.Close(context.TODO())
 
 	var appointments []Appointment
-	for cursor.Next(context.TODO()) {
-		var appointment Appointment
-		if err := cursor.Decode(&appointments); err != nil {
-			log.Println("Cursor decoding error:", err)
-			return nil
-		}
-		appointments = append(appointments, appointment)
-	}
+	cursor.All(context.TODO(), &appointments)
 	return appointments
+}
+
+func GetFutureAppointmentsByUserCode(client *mongo.Client, userCode string) []Appointment {
+	allAppointments := GetAppointmentsByUserCode(client, userCode)
+
+	var futureAppointments []Appointment
+	currentDate := time.Now().Format("2006-01-02")
+
+	for _, appointment := range allAppointments {
+		if appointment.AppointmentTime.Date >= currentDate {
+			futureAppointments = append(futureAppointments, appointment)
+		}
+	}
+
+	return futureAppointments
+}
+
+func GetPastAppointmentsByUserCode(client *mongo.Client, userCode string) []Appointment {
+	allAppointments := GetAppointmentsByUserCode(client, userCode)
+
+	var pastAppointments []Appointment
+	currentDate := time.Now().Format("2006-01-02")
+
+	for _, appointment := range allAppointments {
+		if appointment.AppointmentTime.Date < currentDate {
+			pastAppointments = append(pastAppointments, appointment)
+		}
+	}
+
+	return pastAppointments
 }

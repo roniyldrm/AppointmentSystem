@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,6 +29,14 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type TokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
+	Role         string `json:"role"`
+	UserCode     string `json:"userCode"`
+}
+
 type LoginResponse struct {
 	Message string `json:"message"`
 }
@@ -38,57 +47,79 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-var secretKey = []byte("supersecretkey1234")
+// Secret keys for JWT tokens
+var secretKey = []byte(getSecretKey("JWT_SECRET", "supersecretkey1234"))
+var refreshSecretKey = []byte(getSecretKey("JWT_REFRESH_SECRET", "refreshsupersecretkey1234"))
 
-func LoginUser(client *mongo.Client, input LoginRequest) (string, error) {
+// getSecretKey gets a secret key from environment variable with fallback
+func getSecretKey(envKey, fallback string) string {
+	if key := os.Getenv(envKey); key != "" {
+		return key
+	}
+	return fallback
+}
+
+func LoginUser(client *mongo.Client, input LoginRequest) (TokenResponse, error) {
 	collection := client.Database("users").Collection("users")
 	filter := bson.D{{Key: "email", Value: input.Email}}
 	var user User
 	err := collection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
-		return "", errors.New("no such user")
+		return TokenResponse{}, errors.New("no such user")
 	}
 	fmt.Println("Stored Hash:", user.Password)
 	fmt.Println("Input Password:", input.Password)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
 	if err != nil {
-		return "", errors.New("incorrect password")
+		return TokenResponse{}, errors.New("incorrect password")
 	}
 
-	tokenString, err := generateJWT(user.UserCode, user.Role)
+	accessToken, refreshToken, expiresIn, err := generateTokens(user.UserCode, user.Role)
 	if err != nil {
-		return "", errors.New("could not generate token")
+		return TokenResponse{}, errors.New("could not generate token")
 	}
 
-	return tokenString, nil
+	return TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		Role:         user.Role,
+		UserCode:     user.UserCode,
+	}, nil
 }
 
-func RegisterUser(client *mongo.Client, user User) (string, error) {
+func RegisterUser(client *mongo.Client, user User) (TokenResponse, error) {
 	collection := client.Database("users").Collection("users")
 	if err := collection.FindOne(context.TODO(), bson.D{{Key: "email", Value: user.Email}}).Err(); err == nil {
-		return "", errors.New("email already exists")
+		return TokenResponse{}, errors.New("email already exists")
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return TokenResponse{}, err
 	}
 	user.Password = string(hashedPassword)
 	user.UserCode = helper.GenerateID(8)
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 
-	tokenString, err := generateJWT(user.UserCode, user.Role)
+	accessToken, refreshToken, expiresIn, err := generateTokens(user.UserCode, user.Role)
 	if err != nil {
-		return "", errors.New("could not generate token")
+		return TokenResponse{}, errors.New("could not generate token")
 	}
 
 	_, err = collection.InsertOne(context.TODO(), user)
 	if err != nil {
-		return "", err
+		return TokenResponse{}, err
 	}
 
-	return tokenString, nil
+	return TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		Role:         user.Role,
+		UserCode:     user.UserCode,
+	}, nil
 }
 
 func DeleteUser(client *mongo.Client, userCode string) {
@@ -119,7 +150,7 @@ func GetUser(client *mongo.Client, userCode string) (*User, error) {
 	err := collection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("no such doctor")
+			return nil, errors.New("no such user")
 		}
 		return nil, err
 	}
@@ -128,45 +159,78 @@ func GetUser(client *mongo.Client, userCode string) (*User, error) {
 }
 
 func generateJWT(userCode, userRole string) (string, error) {
+	expirationTime := time.Now().Add(15 * time.Minute)
 	claims := Claims{
 		UserCode: userCode,
 		Role:     userRole,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte("your-secret-key"))
-}
-
-func RefreshToken(refreshToken string) (string, error) {
-	token, err := jwt.ParseWithClaims(refreshToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
-	})
-
-	if err != nil {
-		return "", errors.New("invalid refresh token")
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return "", errors.New("invalid refresh token")
-	}
-
-	expirationTime := time.Now().Add(15 * time.Minute)
-	newClaims := Claims{
-		UserCode: claims.UserCode,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
 	}
 
-	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
-	signedToken, err := newToken.SignedString(secretKey)
-	if err != nil {
-		return "", err
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(secretKey)
+}
+
+func generateRefreshToken(userCode, userRole string) (string, error) {
+	expirationTime := time.Now().Add(7 * 24 * time.Hour) // 7 days
+	claims := Claims{
+		UserCode: userCode,
+		Role:     userRole,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
 	}
 
-	return signedToken, nil
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(refreshSecretKey)
+}
+
+func generateTokens(userCode, userRole string) (string, string, int64, error) {
+	// Generate access token (short-lived)
+	expirationTime := time.Now().Add(15 * time.Minute)
+	accessToken, err := generateJWT(userCode, userRole)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	// Generate refresh token (long-lived)
+	refreshToken, err := generateRefreshToken(userCode, userRole)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	// Calculate expiration in seconds
+	expiresIn := expirationTime.Unix() - time.Now().Unix()
+
+	return accessToken, refreshToken, expiresIn, nil
+}
+
+func RefreshToken(refreshTokenString string) (TokenResponse, error) {
+	token, err := jwt.ParseWithClaims(refreshTokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return refreshSecretKey, nil
+	})
+
+	if err != nil {
+		return TokenResponse{}, errors.New("invalid refresh token")
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return TokenResponse{}, errors.New("invalid refresh token")
+	}
+
+	// Generate new tokens
+	accessToken, refreshToken, expiresIn, err := generateTokens(claims.UserCode, claims.Role)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+
+	return TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		Role:         claims.Role,
+		UserCode:     claims.UserCode,
+	}, nil
 }

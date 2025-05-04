@@ -2,19 +2,40 @@ package main
 
 import (
 	"backend/api"
+	"backend/middleware"
 	"backend/mongodb"
+	wsManager "backend/websocket"
 	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var client *mongo.Client
+var wsClientManager *wsManager.ClientManager
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func init() {
+	// Load .env file if it exists
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+}
 
 func main() {
 	client = mongodb.ConnectToDB()
@@ -23,56 +44,83 @@ func main() {
 			log.Println("Error disconnecting MongoDB:", err)
 		}
 	}()
+
+	// Initialize WebSocket Manager
+	wsClientManager = wsManager.NewManager()
+	go wsClientManager.Start()
+
 	mux := mux.NewRouter()
 
-	// Authentication & User
+	// Public routes (no authentication required)
 	mux.HandleFunc("/api/auth/register", handleRegisterUser).Methods("POST")
 	mux.HandleFunc("/api/auth/login", handleLoginUser).Methods("POST")
 	mux.HandleFunc("/api/auth/refresh", handleRefreshToken).Methods("POST")
-	mux.HandleFunc("/api/user/{userCode}", handleDeleteUser).Methods("DELETE")
-	mux.HandleFunc("/api/users", handleGetAllUsers).Methods("GET")
-	mux.HandleFunc("/api/user/{userCode}", handleGetUser).Methods("GET")
 
-	//Location
-	mux.HandleFunc("/api/location/provinces", handleGetAllProvinces).Methods("GET")
-	mux.HandleFunc("/api/location/districts/{provinceCode}", handleGetDistrictsByProvince).Methods("GET")
-	//Hospital
-	mux.HandleFunc("/api/hospital", handleCreateHospital).Methods("POST")
-	mux.HandleFunc("/api/hospitals", handleGetAllHospitals).Methods("GET")
-	mux.HandleFunc("/api/hospital/{hospitalCode}", handleGetHospital).Methods("GET")
-	mux.HandleFunc("/api/hospitals/{provinceCode}", handleGetHospitalsByProvince).Methods("GET")
-	mux.HandleFunc("/api/hospitals/district/{districtCode}", handleGetHospitalsByDistrict).Methods("GET")
-	mux.HandleFunc("/api/hospital", handleUpdateHospital).Methods("PUT")
-	mux.HandleFunc("/api/hospital/{hospitalCode}", handleDeleteHospital).Methods("DELETE")
-	//Field
-	mux.HandleFunc("/api/fields/{provinceCode}", handleGetFieldsByProvince).Methods("GET")
-	mux.HandleFunc("/api/fields/{districtCode}", handleGetFieldsByDistrict).Methods("GET")
-	//Doctor
-	mux.HandleFunc("/api/doctor", handleCreateDoctor).Methods("POST")
-	mux.HandleFunc("/api/doctors", handleGetAllDoctors).Methods("GET")
-	mux.HandleFunc("/api/doctor/{doctorCode}", handleGetDoctor).Methods("GET")
-	mux.HandleFunc("/api/doctors/{hospitalCode}", handleGetDoctorsByHospitalCode).Methods("GET")
-	mux.HandleFunc("/api/doctor", handleUpdateDoctor).Methods("PUT")
-	mux.HandleFunc("/api/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
-	//Appointment
-	mux.HandleFunc("/api/appointment", handleCreateAppointment).Methods("POST")
-	mux.HandleFunc("/api/appointments", handleGetAllAppointments).Methods("GET")
-	mux.HandleFunc("/api/appointment/{appointmentCode}", handleGetAppointment).Methods("GET")
-	mux.HandleFunc("/api/appointments/{doctorCode}", handleGetAppointmentsByDoctorCode).Methods("GET")
-	mux.HandleFunc("/api/user/{userCode}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
-	mux.HandleFunc("/api/appointment", handleUpdateAppointment).Methods("PUT")
-	mux.HandleFunc("/api/appointment/{appointmentCode}", handleDeleteAppointment).Methods("DELETE")
-	//Request
-	mux.HandleFunc("/api/appointment/cancelRequest", handleCreateAppointmentCancelRequest).Methods("POST")
-	mux.HandleFunc("/api/appointment/cancelRequests", handleGetAllAppointmentCancelRequests).Methods("GET")
-	mux.HandleFunc("/api/appointment/cancelRequests/{doctorCode}", handleGetAppointmentCancelRequestsByDoctorCode).Methods("GET")
-	mux.HandleFunc("/api/appointment/cancelRequests/{requestCode}", handleUpdateCancelRequestStatus).Methods("PATCH")
-	mux.HandleFunc("/api/appointment/cancelRequest", handleDeleteAppointmentCancelRequest).Methods("DELETE")
+	// Protected routes
+	protected := mux.PathPrefix("/api").Subrouter()
+	protected.Use(middleware.JWTMiddleware)
+
+	// User routes (any authenticated user)
+	protected.HandleFunc("/user/{userCode}", handleGetUser).Methods("GET")
+	protected.HandleFunc("/location/provinces", handleGetAllProvinces).Methods("GET")
+	protected.HandleFunc("/location/districts/{provinceCode}", handleGetDistrictsByProvince).Methods("GET")
+	protected.HandleFunc("/hospitals", handleGetAllHospitals).Methods("GET")
+	protected.HandleFunc("/hospital/{hospitalCode}", handleGetHospital).Methods("GET")
+	protected.HandleFunc("/hospitals/{provinceCode}", handleGetHospitalsByProvince).Methods("GET")
+	protected.HandleFunc("/hospitals/district/{districtCode}", handleGetHospitalsByDistrict).Methods("GET")
+	protected.HandleFunc("/fields/{provinceCode}", handleGetFieldsByProvince).Methods("GET")
+	protected.HandleFunc("/fields/{districtCode}", handleGetFieldsByDistrict).Methods("GET")
+	protected.HandleFunc("/doctors", handleGetAllDoctors).Methods("GET")
+	protected.HandleFunc("/doctor/{doctorCode}", handleGetDoctor).Methods("GET")
+	protected.HandleFunc("/doctors/{hospitalCode}", handleGetDoctorsByHospitalCode).Methods("GET")
+	protected.HandleFunc("/appointment", handleCreateAppointment).Methods("POST")
+	protected.HandleFunc("/appointment/{appointmentCode}", handleGetAppointment).Methods("GET")
+	protected.HandleFunc("/user/{userCode}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
+	protected.HandleFunc("/user/{userCode}/appointments/future", handleGetFutureAppointmentsByUserCode).Methods("GET")
+	protected.HandleFunc("/user/{userCode}/appointments/past", handleGetPastAppointmentsByUserCode).Methods("GET")
+	protected.HandleFunc("/appointment/{appointmentCode}", handleDeleteAppointment).Methods("DELETE")
+
+	// Doctor routes
+	doctorRoutes := mux.PathPrefix("/api").Subrouter()
+	doctorRoutes.Use(middleware.JWTMiddleware)
+	doctorRoutes.Use(middleware.RoleMiddleware("doctor", "admin"))
+	doctorRoutes.HandleFunc("/appointments/{doctorCode}", handleGetAppointmentsByDoctorCode).Methods("GET")
+	doctorRoutes.HandleFunc("/appointment/cancelRequest", handleCreateAppointmentCancelRequest).Methods("POST")
+	doctorRoutes.HandleFunc("/appointment/cancelRequests/{doctorCode}", handleGetAppointmentCancelRequestsByDoctorCode).Methods("GET")
+
+	// Admin routes
+	adminRoutes := mux.PathPrefix("/api").Subrouter()
+	adminRoutes.Use(middleware.JWTMiddleware)
+	adminRoutes.Use(middleware.RoleMiddleware("admin"))
+	adminRoutes.HandleFunc("/users", handleGetAllUsers).Methods("GET")
+	adminRoutes.HandleFunc("/user/{userCode}", handleDeleteUser).Methods("DELETE")
+	adminRoutes.HandleFunc("/hospital", handleCreateHospital).Methods("POST")
+	adminRoutes.HandleFunc("/hospital", handleUpdateHospital).Methods("PUT")
+	adminRoutes.HandleFunc("/hospital/{hospitalCode}", handleDeleteHospital).Methods("DELETE")
+	adminRoutes.HandleFunc("/doctor", handleCreateDoctor).Methods("POST")
+	adminRoutes.HandleFunc("/doctor", handleUpdateDoctor).Methods("PUT")
+	adminRoutes.HandleFunc("/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
+	adminRoutes.HandleFunc("/appointments", handleGetAllAppointments).Methods("GET")
+	adminRoutes.HandleFunc("/appointment", handleUpdateAppointment).Methods("PUT")
+	adminRoutes.HandleFunc("/appointment/cancelRequests", handleGetAllAppointmentCancelRequests).Methods("GET")
+	adminRoutes.HandleFunc("/appointment/cancelRequests/{requestCode}", handleUpdateCancelRequestStatus).Methods("PATCH")
+	adminRoutes.HandleFunc("/appointment/cancelRequest", handleDeleteAppointmentCancelRequest).Methods("DELETE")
+
+	// WebSocket
+	mux.HandleFunc("/ws/user/{userCode}", handleUserWebSocket)
+	mux.HandleFunc("/ws/doctor/{doctorCode}", handleDoctorWebSocket)
+	mux.HandleFunc("/ws/admin", handleAdminWebSocket)
+
+	// Configure CORS
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "*"
+	}
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type"},
+		AllowedOrigins:   []string{corsOrigins},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	})
 
@@ -82,8 +130,13 @@ func main() {
 }
 
 func startServer(handler http.Handler) {
-	log.Println("Server started at http://localhost:8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server started at http://localhost:%s", port)
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -94,12 +147,14 @@ func handleLoginUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	message, err := api.LoginUser(client, input)
+	tokenResponse, err := api.LoginUser(client, input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	json.NewEncoder(w).Encode(api.LoginResponse{Message: message})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tokenResponse)
 }
 
 func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +163,7 @@ func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	jwtToken, err := api.RegisterUser(client, user)
+	tokenResponse, err := api.RegisterUser(client, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -116,9 +171,7 @@ func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": jwtToken,
-	})
+	json.NewEncoder(w).Encode(tokenResponse)
 }
 
 func handleRefreshToken(w http.ResponseWriter, r *http.Request) {
@@ -131,15 +184,14 @@ func handleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newAccessToken, err := api.RefreshToken(request.RefreshToken)
+	tokenResponse, err := api.RefreshToken(request.RefreshToken)
 	if err != nil {
 		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"access_token": newAccessToken,
-	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tokenResponse)
 }
 
 func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -333,13 +385,72 @@ func handleUpdateDoctor(w http.ResponseWriter, r *http.Request) {
 func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
 	var appointment api.Appointment
 	json.NewDecoder(r.Body).Decode(&appointment)
-	api.CreateAppointment(client, appointment)
+	err := api.CreateAppointment(client, appointment)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Send real-time notification to doctor and patient
+	notificationContent := map[string]string{
+		"message":         "New appointment has been created",
+		"appointmentCode": appointment.AppointmentCode,
+		"date":            appointment.AppointmentTime.Date,
+		"time":            appointment.AppointmentTime.Time,
+	}
+
+	// Notify user
+	jsonNotification, _ := json.Marshal(notificationContent)
+	wsClientManager.SendToUser(appointment.UserCode, jsonNotification)
+
+	// Notify doctor
+	wsClientManager.SendToDoctor(appointment.DoctorCode, jsonNotification)
+
+	// Notify admin
+	notificationContent["message"] = "New appointment created"
+	jsonNotification, _ = json.Marshal(notificationContent)
+	wsClientManager.SendToAdmin(jsonNotification)
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func handleDeleteAppointment(w http.ResponseWriter, r *http.Request) {
 	appointmentCode := mux.Vars(r)["appointmentCode"]
 
-	api.DeleteAppointment(client, appointmentCode)
+	// Get appointment info before deleting
+	appointment, err := api.GetAppointment(client, appointmentCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	err = api.DeleteAppointment(client, appointmentCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Send real-time notification to doctor and patient
+	notificationContent := map[string]string{
+		"message":         "Appointment has been cancelled",
+		"appointmentCode": appointmentCode,
+		"date":            appointment.AppointmentTime.Date,
+		"time":            appointment.AppointmentTime.Time,
+	}
+
+	// Notify user
+	jsonNotification, _ := json.Marshal(notificationContent)
+	wsClientManager.SendToUser(appointment.UserCode, jsonNotification)
+
+	// Notify doctor
+	wsClientManager.SendToDoctor(appointment.DoctorCode, jsonNotification)
+
+	// Notify admin
+	notificationContent["message"] = "Appointment cancelled"
+	jsonNotification, _ = json.Marshal(notificationContent)
+	wsClientManager.SendToAdmin(jsonNotification)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleUpdateAppointment(w http.ResponseWriter, r *http.Request) {
@@ -356,6 +467,7 @@ func handleGetAllAppointments(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
 func handleGetAppointment(w http.ResponseWriter, r *http.Request) {
 	appointmentCode := mux.Vars(r)["appointmentCode"]
 
@@ -381,6 +493,7 @@ func handleGetAppointmentsByDoctorCode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
 func handleGetAppointmentsByUserCode(w http.ResponseWriter, r *http.Request) {
 	userCode := mux.Vars(r)["userCode"]
 
@@ -397,6 +510,7 @@ func handleCreateAppointmentCancelRequest(w http.ResponseWriter, r *http.Request
 	json.NewDecoder(r.Body).Decode(&request)
 	api.CreateAppointmentCancelRequest(client, request)
 }
+
 func handleGetAllAppointmentCancelRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -436,4 +550,79 @@ func handleDeleteAppointmentCancelRequest(w http.ResponseWriter, r *http.Request
 	doctorCode := mux.Vars(r)["doctorCode"]
 
 	api.DeleteAppointmentCancelRequest(client, doctorCode)
+}
+
+func handleUserWebSocket(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	// Upgrade connection to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Error upgrading to WebSocket:", err)
+		return
+	}
+
+	// Create client and register
+	client := wsManager.NewClient(conn, wsClientManager, "user", userCode)
+	wsClientManager.Register(client)
+
+	// Start read/write pumps
+	go client.Read()
+	go client.Write()
+}
+
+func handleDoctorWebSocket(w http.ResponseWriter, r *http.Request) {
+	doctorCode := mux.Vars(r)["doctorCode"]
+
+	// Upgrade connection to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Error upgrading to WebSocket:", err)
+		return
+	}
+
+	// Create client and register
+	client := wsManager.NewClient(conn, wsClientManager, "doctor", doctorCode)
+	wsClientManager.Register(client)
+
+	// Start read/write pumps
+	go client.Read()
+	go client.Write()
+}
+
+func handleAdminWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Upgrade connection to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Error upgrading to WebSocket:", err)
+		return
+	}
+
+	// Create client and register
+	client := wsManager.NewClient(conn, wsClientManager, "admin", "admin")
+	wsClientManager.Register(client)
+
+	// Start read/write pumps
+	go client.Read()
+	go client.Write()
+}
+
+func handleGetFutureAppointmentsByUserCode(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+	appointments := api.GetFutureAppointmentsByUserCode(client, userCode)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(appointments); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleGetPastAppointmentsByUserCode(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+	appointments := api.GetPastAppointmentsByUserCode(client, userCode)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(appointments); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

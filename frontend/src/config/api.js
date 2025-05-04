@@ -1,0 +1,4 @@
+const API_URL = "http://localhost:8080/api";
+const WS_URL = "ws://localhost:8080/ws";
+
+export { API_URL, WS_URL }; 

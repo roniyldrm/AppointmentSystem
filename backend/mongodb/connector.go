@@ -31,7 +31,7 @@ import (
 
 func ConnectToDB() *mongo.Client {
 	// Using local MongoDB instance
-	mongoURI := "mongodb://localhost:27017"
+	mongoURI := "mongodb+srv://admin:CYYvc2dOytAOc86O@appointmentsystem-prod.l2wfy.mongodb.net/"
 
 	// Connect to MongoDB
 	clientOptions := options.Client().ApplyURI(mongoURI)

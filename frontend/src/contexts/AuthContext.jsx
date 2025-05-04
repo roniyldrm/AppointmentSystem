@@ -7,6 +7,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -30,22 +31,26 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
+      console.log('AuthContext: Login attempt with', username);
       const userData = await AuthService.login(username, password);
+      console.log('AuthContext: Login response', userData);
+      
       setUser({
-        id: userData.userId,
+        id: userData.userCode,
         role: userData.role,
-        token: userData.token
+        token: userData.accessToken
       });
       
       // Connect to WebSocket after successful login
       webSocketService.connect();
       
-      return { success: true };
+      setError(null);
+      return userData;
     } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Login failed'
-      };
+      console.error('AuthContext: Login error', error);
+      const errorMessage = error.response?.data?.message || 'Login failed';
+      setError(errorMessage);
+      throw error;
     }
   };
 
@@ -70,6 +75,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    error,
     login,
     register,
     logout,

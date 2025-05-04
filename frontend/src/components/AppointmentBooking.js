@@ -15,6 +15,8 @@ import {
   Paper,
   Grid
 } from "@mui/material";
+import AppointmentService from '../services/appointment';
+import { format } from 'date-fns';
 
 const AppointmentBooking = () => {
   const navigate = useNavigate();
@@ -24,18 +26,25 @@ const AppointmentBooking = () => {
   // Form state
   const [cities, setCities] = useState([]);
   const [districts, setDistricts] = useState([]);
-  const [clinics, setClinics] = useState([]);
+  const [fields, setFields] = useState([]);
   const [hospitals, setHospitals] = useState([]);
   const [doctors, setDoctors] = useState([]);
   
   // Selected values
   const [selectedCity, setSelectedCity] = useState("");
-  const [selectedDistrict, setSelectedDistrict] = useState("all");
-  const [selectedClinic, setSelectedClinic] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedField, setSelectedField] = useState("");
   const [selectedHospital, setSelectedHospital] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  
+  // Enabled states for form fields (as per requirements)
+  const [districtEnabled, setDistrictEnabled] = useState(false);
+  const [fieldEnabled, setFieldEnabled] = useState(false);
+  const [hospitalEnabled, setHospitalEnabled] = useState(false);
+  const [doctorEnabled, setDoctorEnabled] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(false);
 
   // Check authentication on load
   useEffect(() => {
@@ -51,73 +60,52 @@ const AppointmentBooking = () => {
   const fetchCities = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/cities", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const response = await AppointmentService.getCities();
+      console.log("Cities response:", response.data);
       setCities(response.data);
     } catch (err) {
       setError("Failed to fetch cities. Please try again.");
-      console.error(err);
+      console.error("Error fetching cities:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDistricts = async (cityId) => {
+  const fetchDistricts = async (provinceCode) => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/districts?cityId=${cityId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const response = await AppointmentService.getDistricts(provinceCode);
       setDistricts(response.data);
     } catch (err) {
       setError("Failed to fetch districts. Please try again.");
-      console.error(err);
+      console.error("Error fetching districts:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClinics = async (cityId, districtId = null) => {
+  const fetchFields = async (provinceCode) => {
     try {
       setLoading(true);
-      let url = `/api/clinics?cityId=${cityId}`;
-      if (districtId && districtId !== "all") {
-        url += `&districtId=${districtId}`;
-      }
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
-      setClinics(response.data);
+      const response = await AppointmentService.getFields(provinceCode);
+      setFields(response.data);
     } catch (err) {
-      setError("Failed to fetch clinics. Please try again.");
-      console.error(err);
+      setError("Failed to fetch fields. Please try again.");
+      console.error("Error fetching fields:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchHospitals = async (cityId, districtId = null, clinicId = null) => {
+  const fetchHospitals = async (provinceCode, districtCode, fieldCode) => {
     try {
       setLoading(true);
-      let url = `/api/hospitals?cityId=${cityId}`;
-      
-      if (districtId && districtId !== "all") {
-        url += `&districtId=${districtId}`;
-      }
-      
-      if (clinicId) {
-        url += `&clinicId=${clinicId}`;
-      }
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const response = await AppointmentService.getHospitals(provinceCode, districtCode, fieldCode);
       setHospitals(response.data);
+      setHospitalEnabled(true);
     } catch (err) {
       setError("Failed to fetch hospitals. Please try again.");
-      console.error(err);
+      console.error("Error fetching hospitals:", err);
     } finally {
       setLoading(false);
     }
@@ -126,98 +114,159 @@ const AppointmentBooking = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      let url = "/api/doctors?";
       
-      if (selectedHospital) {
-        url += `hospitalCode=${selectedHospital}`;
-      }
+      const params = {
+        hospitalCode: selectedHospital,
+        fieldCode: selectedField
+      };
       
-      if (selectedClinic) {
-        url += `&fieldCode=${selectedClinic}`;
-      }
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const response = await AppointmentService.getDoctors(params);
       setDoctors(response.data);
     } catch (err) {
       setError("Failed to fetch doctors. Please try again.");
-      console.error(err);
+      console.error("Error fetching doctors:", err);
     } finally {
       setLoading(false);
     }
   };
   
-  const handleCityChange = (e) => {
-    const cityId = e.target.value;
-    setSelectedCity(cityId);
-    setSelectedDistrict("all");
-    setSelectedClinic("");
+  const handleCityChange = async (e) => {
+    const provinceCode = e.target.value;
+    setSelectedCity(provinceCode);
+    
+    // Reset all dependent selections
+    setSelectedDistrict("");
+    setSelectedField("");
     setSelectedHospital("");
     setSelectedDoctor("");
-    
-    // Reset dependent dropdowns
-    setDistricts([]);
-    setClinics([]);
     setHospitals([]);
     setDoctors([]);
     
-    // Fetch districts and clinics based on selected city
-    fetchDistricts(cityId);
-    fetchClinics(cityId);
+    // Enable/disable fields
+    setDistrictEnabled(Boolean(provinceCode));
+    setFieldEnabled(Boolean(provinceCode));
+    setHospitalEnabled(false);
+    setDoctorEnabled(false);
+    
+    if (provinceCode) {
+      try {
+        setLoading(true);
+        // Fetch districts for the selected city
+        fetchDistricts(provinceCode);
+        // Fetch fields for the selected city
+        fetchFields(provinceCode);
+      } catch (err) {
+        setError("Failed to load data. Please try again later.");
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setDistricts([]);
+      setFields([]);
+    }
   };
   
-  const handleDistrictChange = (e) => {
-    const districtId = e.target.value;
-    setSelectedDistrict(districtId);
-    setSelectedClinic("");
+  const handleDistrictChange = async (e) => {
+    const districtCode = e.target.value;
+    setSelectedDistrict(districtCode);
+    
+    // Reset dependent selections
     setSelectedHospital("");
     setSelectedDoctor("");
-    
-    // Reset dependent dropdowns
-    setClinics([]);
     setHospitals([]);
     setDoctors([]);
     
-    // Fetch clinics based on selected city and district
-    fetchClinics(selectedCity, districtId);
+    // Enable/disable fields
+    setHospitalEnabled(false);
+    setDoctorEnabled(false);
+    
+    // If field is selected, fetch hospitals
+    if (selectedField && selectedCity) {
+      fetchHospitals(selectedCity, districtCode, selectedField);
+    }
   };
   
-  const handleClinicChange = (e) => {
-    const clinicId = e.target.value;
-    setSelectedClinic(clinicId);
+  const handleFieldChange = async (e) => {
+    const fieldCode = e.target.value;
+    setSelectedField(fieldCode);
+    
+    // Reset dependent selections
     setSelectedHospital("");
     setSelectedDoctor("");
-    
-    // Reset dependent dropdowns
     setHospitals([]);
     setDoctors([]);
     
-    // Fetch hospitals based on selected city, district and clinic
-    fetchHospitals(selectedCity, selectedDistrict, clinicId);
+    // Enable hospital selection if city is selected
+    setHospitalEnabled(Boolean(fieldCode && selectedCity));
+    setDoctorEnabled(false);
+    
+    if (fieldCode && selectedCity) {
+      fetchHospitals(selectedCity, selectedDistrict, fieldCode);
+    }
   };
   
   const handleHospitalChange = (e) => {
-    const hospitalId = e.target.value;
-    setSelectedHospital(hospitalId);
-    setSelectedDoctor("");
+    const hospitalCode = e.target.value;
+    setSelectedHospital(hospitalCode);
     
-    // Reset dependent dropdown
+    // Reset doctor selection
+    setSelectedDoctor("");
     setDoctors([]);
+    
+    // Enable doctor selection if hospital is selected
+    setDoctorEnabled(Boolean(hospitalCode));
+    
+    // Update search button state
+    checkSearchEnabled();
   };
   
-  const handleSearch = () => {
-    fetchDoctors();
+  const handleStartDateChange = (e) => {
+    setStartDate(e.target.value);
+    checkSearchEnabled();
+  };
+  
+  const handleEndDateChange = (e) => {
+    setEndDate(e.target.value);
+    checkSearchEnabled();
+  };
+  
+  const checkSearchEnabled = () => {
+    // Enable search if city and field are selected
+    setSearchEnabled(Boolean(selectedCity && selectedField));
+  };
+  
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      
+      const params = {
+        cityCode: selectedCity,
+        districtCode: selectedDistrict,
+        fieldCode: selectedField,
+        hospitalCode: selectedHospital
+      };
+      
+      if (startDate) params.startDate = format(new Date(startDate), "yyyy-MM-dd");
+      if (endDate) params.endDate = format(new Date(endDate), "yyyy-MM-dd");
+      
+      const response = await AppointmentService.getDoctors(params);
+      setDoctors(response.data);
+      
+      if (response.data.length === 0) {
+        setError("No doctors found with the selected criteria. Please try different filters.");
+      }
+    } catch (err) {
+      setError("Failed to search for doctors. Please try again later.");
+      console.error("Error searching for doctors:", err);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleDoctorSelect = (doctorId) => {
-    navigate(`/appointment/doctor/${doctorId}`, { 
-      state: { 
-        doctorId,
-        startDate,
-        endDate
-      } 
-    });
+    navigate(`/appointment/doctor/${doctorId}`);
   };
 
   return (
@@ -240,7 +289,7 @@ const AppointmentBooking = () => {
                   label="City"
                 >
                   {cities.map((city) => (
-                    <MenuItem key={city.id} value={city.id}>
+                    <MenuItem key={city.code} value={city.code}>
                       {city.name}
                     </MenuItem>
                   ))}
@@ -256,10 +305,10 @@ const AppointmentBooking = () => {
                   onChange={handleDistrictChange}
                   label="District"
                 >
-                  <MenuItem value="all">All Districts</MenuItem>
+                  <MenuItem value="">All Districts</MenuItem>
                   {districts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
+                    <MenuItem key={district.districtCode} value={district.districtCode}>
+                      {district.districtName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -268,15 +317,16 @@ const AppointmentBooking = () => {
             
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth disabled={!selectedCity}>
-                <InputLabel>Clinic</InputLabel>
+                <InputLabel>Field</InputLabel>
                 <Select
-                  value={selectedClinic}
-                  onChange={handleClinicChange}
-                  label="Clinic"
+                  value={selectedField}
+                  onChange={handleFieldChange}
+                  label="Field"
                 >
-                  {clinics.map((clinic) => (
-                    <MenuItem key={clinic.fieldCode} value={clinic.fieldCode}>
-                      {clinic.fieldName}
+                  <MenuItem value="">Select Specialty</MenuItem>
+                  {fields.map((field) => (
+                    <MenuItem key={field.fieldCode} value={field.fieldCode}>
+                      {field.fieldName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -284,16 +334,17 @@ const AppointmentBooking = () => {
             </Grid>
             
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={!selectedClinic}>
+              <FormControl fullWidth disabled={!selectedHospital}>
                 <InputLabel>Hospital</InputLabel>
                 <Select
                   value={selectedHospital}
                   onChange={handleHospitalChange}
                   label="Hospital"
                 >
+                  <MenuItem value="">All Hospitals</MenuItem>
                   {hospitals.map((hospital) => (
-                    <MenuItem key={hospital.code} value={hospital.code}>
-                      {hospital.name}
+                    <MenuItem key={hospital.hospitalCode} value={hospital.hospitalCode}>
+                      {hospital.hospitalName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -306,7 +357,7 @@ const AppointmentBooking = () => {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={handleStartDateChange}
                   style={{ 
                     padding: '16.5px 14px',
                     marginTop: '16px',
@@ -323,7 +374,7 @@ const AppointmentBooking = () => {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={handleEndDateChange}
                   style={{ 
                     padding: '16.5px 14px',
                     marginTop: '16px',
@@ -339,7 +390,7 @@ const AppointmentBooking = () => {
                 variant="contained"
                 color="primary"
                 onClick={handleSearch}
-                disabled={!selectedClinic || !selectedHospital || loading}
+                disabled={!searchEnabled || loading}
                 fullWidth
               >
                 {loading ? <CircularProgress size={24} /> : "Search for Doctors"}

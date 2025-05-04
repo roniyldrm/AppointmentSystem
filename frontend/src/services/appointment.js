@@ -1,76 +1,74 @@
 import apiClient from './api';
 
 const AppointmentService = {
-  // Get all cities
+  // Get all cities/provinces
   getCities: async () => {
-    return await apiClient.get('/cities');
+    return await apiClient.get('/location/provinces');
   },
   
-  // Get districts by city
-  getDistricts: async (cityCode) => {
-    return await apiClient.get(`/districts/${cityCode}`);
+  // Get districts by city/province
+  getDistricts: async (provinceCode) => {
+    return await apiClient.get(`/location/districts/${provinceCode}`);
   },
   
   // Get fields (specialties/clinics)
-  getFields: async () => {
-    return await apiClient.get('/fields');
+  getFields: async (provinceCode) => {
+    return await apiClient.get(`/fields/${provinceCode}`);
   },
   
-  // Get hospitals by city, district and field
-  getHospitals: async (cityCode, districtCode = null, fieldCode = null) => {
-    let url = `/hospitals?cityCode=${cityCode}`;
-    if (districtCode) url += `&districtCode=${districtCode}`;
-    if (fieldCode) url += `&fieldCode=${fieldCode}`;
-    return await apiClient.get(url);
+  // Get hospitals by province, district and field
+  getHospitals: async (provinceCode, districtCode = null, fieldCode = null) => {
+    if (districtCode) {
+      return await apiClient.get(`/hospitals/district/${districtCode}`);
+    } else {
+      return await apiClient.get(`/hospitals/${provinceCode}`);
+    }
   },
   
   // Get doctors by various parameters
   getDoctors: async (params) => {
-    const { cityCode, districtCode, fieldCode, hospitalCode, startDate, endDate } = params;
-    let url = '/doctors?';
-    if (cityCode) url += `cityCode=${cityCode}&`;
-    if (districtCode) url += `districtCode=${districtCode}&`;
-    if (fieldCode) url += `fieldCode=${fieldCode}&`;
-    if (hospitalCode) url += `hospitalCode=${hospitalCode}&`;
-    if (startDate) url += `startDate=${startDate}&`;
-    if (endDate) url += `endDate=${endDate}&`;
+    const { hospitalCode } = params;
     
-    return await apiClient.get(url.slice(0, -1)); // Remove last &
+    if (hospitalCode) {
+      return await apiClient.get(`/doctors/${hospitalCode}`);
+    } else {
+      return await apiClient.get('/doctors');
+    }
   },
   
   // Get doctor by ID
   getDoctor: async (doctorId) => {
-    return await apiClient.get(`/doctors/${doctorId}`);
+    return await apiClient.get(`/doctor/${doctorId}`);
   },
   
   // Get doctor's available time slots
   getDoctorTimeSlots: async (doctorId, date) => {
-    return await apiClient.get(`/doctors/${doctorId}/timeslots?date=${date}`);
+    return await apiClient.get(`/doctor/${doctorId}/timeslots?date=${date}`);
   },
   
   // Create a new appointment
   createAppointment: async (appointmentData) => {
-    return await apiClient.post('/appointments', appointmentData);
+    return await apiClient.post('/appointment', appointmentData);
   },
   
   // Get user's appointments
-  getUserAppointments: async () => {
-    return await apiClient.get('/appointments/user');
+  getUserAppointments: async (userCode) => {
+    return await apiClient.get(`/user/${userCode}/appointments`);
   },
   
-  // Get doctor's appointments
-  getDoctorAppointments: async () => {
-    return await apiClient.get('/appointments/doctor');
+  // Get user's future appointments
+  getUserFutureAppointments: async (userCode) => {
+    return await apiClient.get(`/user/${userCode}/appointments/future`);
   },
   
-  // Get all appointments (admin only)
-  getAllAppointments: async () => {
-    return await apiClient.get('/appointments');
+  // Get user's past appointments
+  getUserPastAppointments: async (userCode) => {
+    return await apiClient.get(`/user/${userCode}/appointments/past`);
   },
   
   // Cancel an appointment
-  cancelAppointment: async (appointmentId) => {
-    return await apiClient.delete(`/appointments/${appointmentId}`);
+  cancelAppointment: async (appointmentCode) => {
+    return await apiClient.delete(`/appointment/${appointmentCode}`);
   },
   
   // Request cancellation (for doctors)

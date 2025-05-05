@@ -197,8 +197,8 @@ The system uses MailerSend for sending email notifications. To use the email ser
 
 ```
 MAILERSEND_API_KEY=your-api-key
-MAILERSEND_FROM_NAME=Horasan Hospital
-MAILERSEND_FROM_EMAIL=info@horasan.com
+MAILERSEND_FROM_NAME=e-pulse
+MAILERSEND_FROM_EMAIL=info@e-pulse.com
 ```
 
 Make sure to add the MailerSend Go package to your project:

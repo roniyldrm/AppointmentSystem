@@ -159,7 +159,7 @@ func GetUser(client *mongo.Client, userCode string) (*User, error) {
 }
 
 func generateJWT(userCode, userRole string) (string, error) {
-	expirationTime := time.Now().Add(15 * time.Minute)
+	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := Claims{
 		UserCode: userCode,
 		Role:     userRole,
@@ -187,8 +187,8 @@ func generateRefreshToken(userCode, userRole string) (string, error) {
 }
 
 func generateTokens(userCode, userRole string) (string, string, int64, error) {
-	// Generate access token (short-lived)
-	expirationTime := time.Now().Add(15 * time.Minute)
+	// Generate access token (now with 1-day expiration)
+	expirationTime := time.Now().Add(24 * time.Hour)
 	accessToken, err := generateJWT(userCode, userRole)
 	if err != nil {
 		return "", "", 0, err
@@ -233,4 +233,35 @@ func RefreshToken(refreshTokenString string) (TokenResponse, error) {
 		Role:         claims.Role,
 		UserCode:     claims.UserCode,
 	}, nil
+}
+
+// HashPassword hashes a password using bcrypt
+func HashPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedPassword), nil
+}
+
+// CheckPasswordHash compares a password with a hash
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// UpdateUserPassword updates a user's password in the database
+func UpdateUserPassword(client *mongo.Client, userCode string, newPasswordHash string) error {
+	collection := client.Database("users").Collection("users")
+
+	filter := bson.D{{Key: "userCode", Value: userCode}}
+	update := bson.M{
+		"$set": bson.M{
+			"password":  newPasswordHash,
+			"updatedAt": time.Now(),
+		},
+	}
+
+	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	return err
 }

@@ -66,6 +66,9 @@ func main() {
 
 	// User routes (any authenticated user)
 	protected.HandleFunc("/user/{userCode}", handleGetUser).Methods("GET")
+	protected.HandleFunc("/user/{userCode}/profile", handleGetUserProfile).Methods("GET")
+	protected.HandleFunc("/user/{userCode}/profile", handleUpdateUserProfile).Methods("POST", "PUT")
+	protected.HandleFunc("/user/{userCode}/password", handleChangePassword).Methods("POST")
 	protected.HandleFunc("/location/provinces", handleGetAllProvinces).Methods("GET")
 	protected.HandleFunc("/location/districts/{provinceCode}", handleGetDistrictsByProvince).Methods("GET")
 	protected.HandleFunc("/hospitals", handleGetAllHospitals).Methods("GET")
@@ -158,6 +161,34 @@ func handleLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Try to get user profile data to include in response
+	if profile, err := api.GetUserAdditionalInfo(client, tokenResponse.UserCode); err == nil && profile != nil {
+		// Create an enhanced response that includes both token data and profile data
+		type EnhancedResponse struct {
+			api.TokenResponse
+			User struct {
+				FirstName string `json:"firstName,omitempty"`
+				LastName  string `json:"lastName,omitempty"`
+				Email     string `json:"email,omitempty"`
+				Phone     string `json:"phone,omitempty"`
+			} `json:"user"`
+		}
+
+		enhancedResp := EnhancedResponse{
+			TokenResponse: tokenResponse,
+		}
+
+		enhancedResp.User.FirstName = profile.FirstName
+		enhancedResp.User.LastName = profile.LastName
+		enhancedResp.User.Email = profile.Email
+		enhancedResp.User.Phone = profile.Phone
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(enhancedResp)
+		return
+	}
+
+	// Fallback to the standard response if no profile is found
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tokenResponse)
 }
@@ -173,6 +204,16 @@ func handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Create initial profile record with empty values
+	initialProfile := api.UserAdditionalInfo{
+		UserCode:  tokenResponse.UserCode,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Ignore errors since this is just an initialization
+	api.CreateUserAdditionalInfo(client, initialProfile)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -236,6 +277,42 @@ func handleGetUser(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func handleGetUserProfile(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	profile, err := api.GetUserAdditionalInfo(client, userCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(profile); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleUpdateUserProfile(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	var profile api.UserAdditionalInfo
+	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure the userCode in the URL matches the one in the request body
+	profile.UserCode = userCode
+
+	err := api.UpdateUserAdditionalInfo(client, profile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleGetDistrictsByProvince(w http.ResponseWriter, r *http.Request) {
@@ -870,4 +947,47 @@ func handleGetDoctorTimeSlots(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	userCode := mux.Vars(r)["userCode"]
+
+	var passwordData struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&passwordData); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get the user to verify current password
+	user, err := api.GetUser(client, userCode)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify the current password
+	if !api.CheckPasswordHash(passwordData.CurrentPassword, user.Password) {
+		http.Error(w, "Current password is incorrect", http.StatusUnauthorized)
+		return
+	}
+
+	// Hash the new password
+	newPasswordHash, err := api.HashPassword(passwordData.NewPassword)
+	if err != nil {
+		http.Error(w, "Error processing new password", http.StatusInternalServerError)
+		return
+	}
+
+	// Update the password
+	err = api.UpdateUserPassword(client, userCode, newPasswordHash)
+	if err != nil {
+		http.Error(w, "Error updating password", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

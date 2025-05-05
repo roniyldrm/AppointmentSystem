@@ -29,7 +29,7 @@ func GetMailerSendConfig() MailerSendConfig {
 
 	fromName := os.Getenv("MAILERSEND_FROM_NAME")
 	if fromName == "" {
-		fromName = "Horasan Hospital"
+		fromName = "e-pulse"
 	}
 
 	fromEmail := os.Getenv("MAILERSEND_FROM_EMAIL")
@@ -127,7 +127,7 @@ func SendMailerSendEmail(recipients []string, subject, htmlContent, textContent 
 
 // SendAppointmentConfirmationEmail sends an appointment confirmation email
 func SendAppointmentConfirmationEmail(email, patientName, doctorName, hospitalName, date, time string) error {
-	subject := "Randevu Onayı - Horasan Hospital"
+	subject := "Randevu Onayı - e-pulse"
 
 	variables := map[string]interface{}{
 		"patient_name":  patientName,
@@ -155,9 +155,9 @@ func SendAppointmentConfirmationEmail(email, patientName, doctorName, hospitalNa
 			</div>
 			
 			<p>Randevunuzdan 24 saat öncesine kadar iptal edebilirsiniz.</p>
-			<p>Sorularınız için lütfen <a href="mailto:info@horasan.com">info@horasan.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
+			<p>Sorularınız için lütfen <a href="mailto:info@e-pulse.com">info@e-pulse.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
 			
-			<p>Horasan Hospital Randevu Sistemi</p>
+			<p>e-pulse Randevu Sistemi</p>
 		</div>
 		<div style="background-color: #f3f4f6; padding: 10px; text-align: center; font-size: 12px; color: #6b7280;">
 			<p>Bu e-posta otomatik olarak gönderilmiştir, lütfen yanıtlamayınız.</p>
@@ -180,9 +180,9 @@ func SendAppointmentConfirmationEmail(email, patientName, doctorName, hospitalNa
 	
 	Randevunuzdan 24 saat öncesine kadar iptal edebilirsiniz.
 	
-	Sorularınız için lütfen info@horasan.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
+	Sorularınız için lütfen info@e-pulse.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
 	
-	Horasan Hospital Randevu Sistemi
+	e-pulse Randevu Sistemi
 	`, patientName, doctorName, hospitalName, date, time)
 
 	return SendMailerSendEmail([]string{email}, subject, htmlContent, textContent, variables)
@@ -190,7 +190,7 @@ func SendAppointmentConfirmationEmail(email, patientName, doctorName, hospitalNa
 
 // SendAppointmentCancellationEmail sends an appointment cancellation email
 func SendAppointmentCancellationEmail(email, patientName, doctorName, hospitalName, date, time string) error {
-	subject := "Randevu İptali - Horasan Hospital"
+	subject := "Randevu İptali - e-pulse"
 
 	variables := map[string]interface{}{
 		"patient_name":  patientName,
@@ -218,9 +218,9 @@ func SendAppointmentCancellationEmail(email, patientName, doctorName, hospitalNa
 			</div>
 			
 			<p>Yeni bir randevu oluşturmak için lütfen uygulamamızı veya web sitemizi ziyaret edin.</p>
-			<p>Sorularınız için lütfen <a href="mailto:info@horasan.com">info@horasan.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
+			<p>Sorularınız için lütfen <a href="mailto:info@e-pulse.com">info@e-pulse.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
 			
-			<p>Horasan Hospital Randevu Sistemi</p>
+			<p>e-pulse Randevu Sistemi</p>
 		</div>
 		<div style="background-color: #f3f4f6; padding: 10px; text-align: center; font-size: 12px; color: #6b7280;">
 			<p>Bu e-posta otomatik olarak gönderilmiştir, lütfen yanıtlamayınız.</p>
@@ -243,9 +243,9 @@ func SendAppointmentCancellationEmail(email, patientName, doctorName, hospitalNa
 	
 	Yeni bir randevu oluşturmak için lütfen uygulamamızı veya web sitemizi ziyaret edin.
 	
-	Sorularınız için lütfen info@horasan.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
+	Sorularınız için lütfen info@e-pulse.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
 	
-	Horasan Hospital Randevu Sistemi
+	e-pulse Randevu Sistemi
 	`, patientName, doctorName, hospitalName, date, time)
 
 	return SendMailerSendEmail([]string{email}, subject, htmlContent, textContent, variables)
@@ -253,7 +253,7 @@ func SendAppointmentCancellationEmail(email, patientName, doctorName, hospitalNa
 
 // SendAppointmentReminderEmail sends an appointment reminder email
 func SendAppointmentReminderEmail(email, patientName, doctorName, hospitalName, date, time string) error {
-	subject := "Randevu Hatırlatması - Horasan Hospital"
+	subject := "Randevu Hatırlatması - e-pulse"
 
 	variables := map[string]interface{}{
 		"patient_name":  patientName,
@@ -282,9 +282,9 @@ func SendAppointmentReminderEmail(email, patientName, doctorName, hospitalName, 
 			
 			<p>Lütfen randevunuzdan 15 dakika önce hastanede olunuz.</p>
 			<p>İptal etmek için lütfen en az 24 saat öncesinden bildiriniz.</p>
-			<p>Sorularınız için lütfen <a href="mailto:info@horasan.com">info@horasan.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
+			<p>Sorularınız için lütfen <a href="mailto:info@e-pulse.com">info@e-pulse.com</a> adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.</p>
 			
-			<p>Horasan Hospital Randevu Sistemi</p>
+			<p>e-pulse Randevu Sistemi</p>
 		</div>
 		<div style="background-color: #f3f4f6; padding: 10px; text-align: center; font-size: 12px; color: #6b7280;">
 			<p>Bu e-posta otomatik olarak gönderilmiştir, lütfen yanıtlamayınız.</p>
@@ -308,9 +308,9 @@ func SendAppointmentReminderEmail(email, patientName, doctorName, hospitalName, 
 	Lütfen randevunuzdan 15 dakika önce hastanede olunuz.
 	İptal etmek için lütfen en az 24 saat öncesinden bildiriniz.
 	
-	Sorularınız için lütfen info@horasan.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
+	Sorularınız için lütfen info@e-pulse.com adresine e-posta gönderin veya 0850 123 4567 numaralı telefondan bizi arayın.
 	
-	Horasan Hospital Randevu Sistemi
+	e-pulse Randevu Sistemi
 	`, patientName, doctorName, hospitalName, date, time)
 
 	return SendMailerSendEmail([]string{email}, subject, htmlContent, textContent, variables)
@@ -327,7 +327,7 @@ func SendSMS(phone, message string) error {
 
 // SendAppointmentConfirmationSMS sends an SMS about a new appointment
 func SendAppointmentConfirmationSMS(phone, patientName, doctorName, date, time string) error {
-	message := fmt.Sprintf("Sayın %s, Dr. %s ile %s tarihinde saat %s için randevunuz onaylanmıştır. İyi günler dileriz. - Horasan Hospital",
+	message := fmt.Sprintf("Sayın %s, Dr. %s ile %s tarihinde saat %s için randevunuz onaylanmıştır. İyi günler dileriz. - e-pulse",
 		patientName, doctorName, date, time)
 
 	return SendSMS(phone, message)
@@ -335,7 +335,7 @@ func SendAppointmentConfirmationSMS(phone, patientName, doctorName, date, time s
 
 // SendAppointmentCancellationSMS sends an SMS about a cancelled appointment
 func SendAppointmentCancellationSMS(phone, patientName, doctorName, date, time string) error {
-	message := fmt.Sprintf("Sayın %s, Dr. %s ile %s tarihinde saat %s için olan randevunuz iptal edilmiştir. İyi günler dileriz. - Horasan Hospital",
+	message := fmt.Sprintf("Sayın %s, Dr. %s ile %s tarihinde saat %s için olan randevunuz iptal edilmiştir. İyi günler dileriz. - e-pulse",
 		patientName, doctorName, date, time)
 
 	return SendSMS(phone, message)
@@ -343,7 +343,7 @@ func SendAppointmentCancellationSMS(phone, patientName, doctorName, date, time s
 
 // SendAppointmentReminderSMS sends a reminder SMS about an upcoming appointment
 func SendAppointmentReminderSMS(phone, patientName, doctorName, date, time string) error {
-	message := fmt.Sprintf("Sayın %s, yarın Dr. %s ile %s tarihinde saat %s için randevunuz bulunmaktadır. Lütfen 15 dakika önce hastanede olunuz. - Horasan Hospital",
+	message := fmt.Sprintf("Sayın %s, yarın Dr. %s ile %s tarihinde saat %s için randevunuz bulunmaktadır. Lütfen 15 dakika önce hastanede olunuz. - e-pulse",
 		patientName, doctorName, date, time)
 
 	return SendSMS(phone, message)

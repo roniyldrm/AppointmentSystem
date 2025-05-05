@@ -12,7 +12,7 @@ func TestSendEmail(t *testing.T) {
 	// Set up test data
 	patientName := "İsmail Tunçel"
 	doctorName := "Ahmet Yılmaz"
-	hospitalName := "Horasan Hastanesi"
+	hospitalName := "e-pulse Hastanesi"
 	date := "15.11.2023"
 	time := "14:30"
 
@@ -41,7 +41,7 @@ func SendTestEmail() error {
 	// Set up test data
 	patientName := "İsmail Tunçel"
 	doctorName := "Ahmet Yılmaz"
-	hospitalName := "Horasan Hastanesi"
+	hospitalName := "e-pulse Hastanesi"
 	date := "15.11.2023"
 	time := "14:30"
 

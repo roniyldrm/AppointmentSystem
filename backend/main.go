@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -441,12 +442,27 @@ func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get doctor information for the notification
+	doctor, err := api.GetDoctor(client, appointment.DoctorCode)
+	if err != nil {
+		log.Println("Error getting doctor:", err)
+		// Continue despite error
+	}
+
 	// Send real-time notification to doctor and patient
-	notificationContent := map[string]string{
-		"message":         "New appointment has been created",
+	notificationContent := map[string]interface{}{
+		"type":            "appointmentCreated",
+		"message":         "Yeni randevunuz oluşturuldu",
 		"appointmentCode": appointment.AppointmentCode,
 		"date":            appointment.AppointmentTime.Date,
 		"time":            appointment.AppointmentTime.Time,
+		"title":           "Yeni Randevu",
+		"timestamp":       time.Now().Format(time.RFC3339),
+	}
+
+	// Add doctor name if available
+	if doctor != nil {
+		notificationContent["doctorName"] = doctor.DoctorName
 	}
 
 	// Notify user
@@ -454,10 +470,12 @@ func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
 	wsClientManager.SendToUser(appointment.UserCode, jsonNotification)
 
 	// Notify doctor
+	notificationContent["message"] = "Yeni randevu oluşturuldu"
+	jsonNotification, _ = json.Marshal(notificationContent)
 	wsClientManager.SendToDoctor(appointment.DoctorCode, jsonNotification)
 
 	// Notify admin
-	notificationContent["message"] = "New appointment created"
+	notificationContent["message"] = "Yeni randevu oluşturuldu"
 	jsonNotification, _ = json.Marshal(notificationContent)
 	wsClientManager.SendToAdmin(jsonNotification)
 
@@ -472,13 +490,21 @@ func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
 func handleDeleteAppointment(w http.ResponseWriter, r *http.Request) {
 	appointmentCode := mux.Vars(r)["appointmentCode"]
 
-	// Get appointment info before deleting
+	// Get appointment details before deletion
 	appointment, err := api.GetAppointment(client, appointmentCode)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
+	// Get doctor information for the notification
+	doctor, err := api.GetDoctor(client, appointment.DoctorCode)
+	if err != nil {
+		log.Println("Error getting doctor:", err)
+		// Continue despite error
+	}
+
+	// Delete the appointment
 	err = api.DeleteAppointment(client, appointmentCode)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -486,11 +512,19 @@ func handleDeleteAppointment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send real-time notification to doctor and patient
-	notificationContent := map[string]string{
-		"message":         "Appointment has been cancelled",
+	notificationContent := map[string]interface{}{
+		"type":            "appointmentCancelled",
+		"message":         "Randevunuz iptal edildi",
 		"appointmentCode": appointmentCode,
 		"date":            appointment.AppointmentTime.Date,
 		"time":            appointment.AppointmentTime.Time,
+		"title":           "Randevu İptali",
+		"timestamp":       time.Now().Format(time.RFC3339),
+	}
+
+	// Add doctor name if available
+	if doctor != nil {
+		notificationContent["doctorName"] = doctor.DoctorName
 	}
 
 	// Notify user
@@ -498,10 +532,12 @@ func handleDeleteAppointment(w http.ResponseWriter, r *http.Request) {
 	wsClientManager.SendToUser(appointment.UserCode, jsonNotification)
 
 	// Notify doctor
+	notificationContent["message"] = "Hasta randevuyu iptal etti"
+	jsonNotification, _ = json.Marshal(notificationContent)
 	wsClientManager.SendToDoctor(appointment.DoctorCode, jsonNotification)
 
 	// Notify admin
-	notificationContent["message"] = "Appointment cancelled"
+	notificationContent["message"] = "Randevu iptal edildi"
 	jsonNotification, _ = json.Marshal(notificationContent)
 	wsClientManager.SendToAdmin(jsonNotification)
 
@@ -609,6 +645,25 @@ func handleDeleteAppointmentCancelRequest(w http.ResponseWriter, r *http.Request
 
 func handleUserWebSocket(w http.ResponseWriter, r *http.Request) {
 	userCode := mux.Vars(r)["userCode"]
+	token := r.URL.Query().Get("token")
+
+	// Token kontrolü
+	if token == "" {
+		log.Println("WebSocket bağlantısı için token eksik")
+		http.Error(w, "Unauthorized: Token required", http.StatusUnauthorized)
+		return
+	}
+
+	// Basit bir token doğrulama
+	// Gerçek uygulamada middleware.JWTMiddleware kullanın
+	// Bu örnek yalnızca websocket bağlantısını test etmek için
+	if token == "" || len(token) < 10 {
+		log.Println("WebSocket bağlantısı için geçersiz token")
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	log.Printf("WebSocket bağlantısı: UserCode=%s", userCode)
 
 	// Upgrade connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -617,6 +672,8 @@ func handleUserWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("WebSocket bağlantısı başarılı: UserCode=", userCode)
+
 	// Create client and register
 	client := wsManager.NewClient(conn, wsClientManager, "user", userCode)
 	wsClientManager.Register(client)
@@ -624,6 +681,16 @@ func handleUserWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Start read/write pumps
 	go client.Read()
 	go client.Write()
+
+	// Hoşgeldin mesajı gönder - SendToUser metodunu kullan
+	welcomeMessage := map[string]interface{}{
+		"type":      "notification",
+		"title":     "Bağlantı Başarılı",
+		"message":   "WebSocket bağlantısı başarıyla kuruldu.",
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	jsonMessage, _ := json.Marshal(welcomeMessage)
+	wsClientManager.SendToUser(userCode, jsonMessage)
 }
 
 func handleDoctorWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -714,7 +781,7 @@ func handleGetDoctorTimeSlots(w http.ResponseWriter, r *http.Request) {
 	workStart := doctor.WorkHours.Start
 	workEnd := doctor.WorkHours.End
 
-	// Default values if not specified
+	// Default values if not specified - ensure 9:00 AM to 5:00 PM
 	if workStart == "" {
 		workStart = "09:00"
 	}
@@ -729,19 +796,43 @@ func handleGetDoctorTimeSlots(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(workStart, "%d:%d", &startHour, &startMin)
 	fmt.Sscanf(workEnd, "%d:%d", &endHour, &endMin)
 
+	// Ensure working hours are between 9:00-17:00 regardless of what's stored
+	if startHour < 9 {
+		startHour = 9
+		startMin = 0
+	}
+	if endHour > 17 {
+		endHour = 17
+		endMin = 0
+	}
+
+	// Check if selected date is today
+	isToday := false
+	today := time.Now().Format("2006-01-02")
+	if date == today {
+		isToday = true
+	}
+	currentHour, currentMin := time.Now().Hour(), time.Now().Minute()
+
 	// Generate slots - assuming 15 minute intervals
 	var timeSlots []map[string]interface{}
 	slotId := 1
 
-	for hour := startHour; hour < endHour; hour++ {
+	// For the end hour (17:00), we need to include slots up to endMin
+	for hour := startHour; hour <= endHour; hour++ {
 		for minute := 0; minute < 60; minute += 15 {
+			// Skip if we've gone past the end time
+			if hour > endHour || (hour == endHour && minute > 0) {
+				continue
+			}
+
 			// Skip minutes before start time for first hour
 			if hour == startHour && minute < startMin {
 				continue
 			}
 
-			// Skip minutes after end time for last hour
-			if hour == endHour-1 && minute >= endMin {
+			// Skip past time slots if booking for today
+			if isToday && (hour < currentHour || (hour == currentHour && minute <= currentMin)) {
 				continue
 			}
 
@@ -753,18 +844,30 @@ func handleGetDoctorTimeSlots(w http.ResponseWriter, r *http.Request) {
 
 			// Add slot to response
 			timeSlots = append(timeSlots, map[string]interface{}{
-				"slotId":    slotId,
-				"startTime": timeStr,
-				"endTime":   fmt.Sprintf("%02d:%02d", hour+(minute+15)/60, (minute+15)%60),
-				"available": !isBooked,
+				"slotId":     slotId,
+				"startTime":  timeStr,
+				"endTime":    fmt.Sprintf("%02d:%02d", hour+(minute+15)/60, (minute+15)%60),
+				"available":  !isBooked,
+				"isBooked":   isBooked,
+				"doctorName": doctor.DoctorName,
 			})
 
 			slotId++
 		}
 	}
 
+	// Add doctor info to the response
+	response := map[string]interface{}{
+		"timeSlots": timeSlots,
+		"doctorInfo": map[string]string{
+			"doctorName": doctor.DoctorName,
+			"workStart":  workStart,
+			"workEnd":    workEnd,
+		},
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(timeSlots); err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

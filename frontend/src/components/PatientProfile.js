@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import AppointmentService from '../services/appointment';
 import { useAuth } from '../contexts/AuthContext';
 
 const PatientProfile = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,11 +20,49 @@ const PatientProfile = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await AppointmentService.getUserAppointments();
-      setAppointments(response.data);
+      
+      // Try multiple possible sources for user ID
+      let userIdentifier = null;
+      
+      // From localStorage directly (most reliable)
+      const storedUserId = localStorage.getItem('userId');
+      if (storedUserId) {
+        userIdentifier = storedUserId;
+        console.log("Using userId from localStorage:", userIdentifier);
+      }
+      // From auth context if localStorage failed
+      else if (currentUser?.id) {
+        userIdentifier = currentUser.id;
+        console.log("Using userId from currentUser.id:", userIdentifier);
+      }
+      // From auth context userCode if available
+      else if (currentUser?.userCode) {
+        userIdentifier = currentUser.userCode;
+        console.log("Using userCode from currentUser:", userIdentifier);
+      }
+      
+      if (!userIdentifier) {
+        setError('Kullanıcı kimliği bulunamadı. Lütfen tekrar giriş yapın.');
+        console.error('User identifier not found in any source. Current user:', currentUser);
+        return;
+      }
+      
+      console.log("Fetching appointments for user:", userIdentifier);
+      // Use the enhanced method to get more detailed appointment data
+      const response = await AppointmentService.getUserAppointmentsWithDetails(userIdentifier);
+      
+      if (response && response.data) {
+        console.log("Appointments received:", response.data);
+        setAppointments(response.data);
+      } else {
+        console.warn("No appointment data received:", response);
+        setAppointments([]);
+      }
     } catch (err) {
-      setError('Failed to load your appointments. Please try again later.');
+      setError('Randevularınız yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
       console.error('Error fetching appointments:', err);
+      console.error('Error details:', err.response || err.message);
+      setAppointments([]); // Ensure we have an empty array at minimum
     } finally {
       setLoading(false);
     }
@@ -64,174 +104,206 @@ const PatientProfile = () => {
     return `${formattedHour}:${minutes} ${ampm}`;
   };
   
-  // Filter appointments by date
-  const upcomingAppointments = appointments.filter(
-    appointment => new Date(appointment.date) >= new Date()
-  );
+  // Safely filter appointments by date with null/undefined checking
+  const upcomingAppointments = Array.isArray(appointments) 
+    ? appointments.filter(appointment => 
+        appointment && 
+        (appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date)) && 
+        new Date(appointment.date || appointment.appointmentTime.date) >= new Date()
+      )
+    : [];
   
-  const pastAppointments = appointments.filter(
-    appointment => new Date(appointment.date) < new Date()
-  );
+  const pastAppointments = Array.isArray(appointments)
+    ? appointments.filter(appointment => 
+        appointment && 
+        (appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date)) && 
+        new Date(appointment.date || appointment.appointmentTime.date) < new Date()
+      )
+    : [];
   
   const displayAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
   
+  // Get the appointment status with proper class
+  const getStatusBadge = (status) => {
+    let badgeClass = 'badge-blue';
+    let statusText = 'Scheduled';
+    
+    if (!status) {
+      return <span className={`badge ${badgeClass}`}>{statusText}</span>;
+    }
+    
+    switch(status.toUpperCase()) {
+      case 'CANCELLED':
+        badgeClass = 'badge-red';
+        statusText = 'İptal Edildi';
+        break;
+      case 'COMPLETED':
+        badgeClass = 'badge-green';
+        statusText = 'Tamamlandı';
+        break;
+      default:
+        badgeClass = 'badge-blue';
+        statusText = 'Planlandı';
+    }
+    
+    return <span className={`badge ${badgeClass}`}>{statusText}</span>;
+  };
+  
   return (
-    <div className="bg-gray-50 min-h-screen py-8">
-      <div className="container mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
-              <p className="text-gray-600 mt-1">Manage your appointments and personal information</p>
+    <div className="app-container">
+      <div className="card">
+        <div className="card-header">
+          <h1 className="page-title">Profilim</h1>
+          {currentUser && (
+            <div className="px-3 py-1 bg-blue-50 rounded-lg text-sm text-gray-700">
+              <span className="font-semibold mr-1">Hesap:</span> 
+              {currentUser.username || currentUser.id}
             </div>
-            
-            {currentUser && (
-              <div className="mt-4 sm:mt-0 px-4 py-2 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Logged in as:</span> {currentUser.username || currentUser.id}
-                </p>
-              </div>
-            )}
-          </div>
-          
+          )}
+        </div>
+        
+        <div className="card-body">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <i className="fas fa-exclamation-circle text-red-400"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">{error}</p>
+                </div>
+              </div>
             </div>
           )}
           
-          <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <div className="flex -mb-px">
-                <button
-                  className={`mr-1 py-2 px-4 text-sm font-medium ${
-                    activeTab === 'upcoming'
-                      ? 'text-blue-600 border-b-2 border-blue-500'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('upcoming')}
-                >
-                  Upcoming Appointments
-                </button>
-                <button
-                  className={`ml-1 py-2 px-4 text-sm font-medium ${
-                    activeTab === 'past'
-                      ? 'text-blue-600 border-b-2 border-blue-500'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('past')}
-                >
-                  Past Appointments
-                </button>
-              </div>
+          {/* Tabs */}
+          <div className="mb-6 border-b border-gray-200">
+            <div className="flex -mb-px space-x-4">
+              <button
+                className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                  activeTab === 'upcoming'
+                    ? 'text-primary border-primary'
+                    : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('upcoming')}
+              >
+                <i className="fas fa-calendar-day mr-2"></i>
+                Yaklaşan Randevular
+              </button>
+              <button
+                className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                  activeTab === 'past'
+                    ? 'text-primary border-primary'
+                    : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('past')}
+              >
+                <i className="fas fa-history mr-2"></i>
+                Geçmiş Randevular
+              </button>
             </div>
           </div>
           
+          {/* Content */}
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="flex justify-center items-center py-16">
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-3"></div>
+                <p className="text-gray-500">Randevular yükleniyor...</p>
+              </div>
             </div>
           ) : displayAppointments.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No appointments found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="bg-gray-50 rounded-lg py-12 px-4 text-center">
+              <div className="mx-auto h-20 w-20 text-gray-400 mb-4">
+                <i className="fas fa-calendar-times text-5xl"></i>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Randevu Bulunamadı</h3>
+              <p className="text-gray-500 mb-5">
                 {activeTab === 'upcoming'
-                  ? 'You have no upcoming appointments. Would you like to book one?'
-                  : 'You have no past appointments.'}
+                  ? 'Yaklaşan randevunuz bulunmuyor. Yeni bir randevu almak ister misiniz?'
+                  : 'Geçmiş randevu kaydınız bulunmuyor.'}
               </p>
               {activeTab === 'upcoming' && (
-                <div className="mt-6">
-                  <a
-                    href="/appointment"
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Book Appointment
-                  </a>
-                </div>
+                <button
+                  onClick={() => navigate('/appointment')}
+                  className="btn btn-primary"
+                >
+                  <i className="fas fa-calendar-plus mr-2"></i>
+                  Randevu Al
+                </button>
               )}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="table-modern">
+                <thead>
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Doctor
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Time
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Hospital
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    {activeTab === 'upcoming' && (
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
+                    <th>Doktor</th>
+                    <th>Tarih & Saat</th>
+                    <th>Hastane</th>
+                    <th>Durum</th>
+                    {activeTab === 'upcoming' && <th className="text-right">İşlemler</th>}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {displayAppointments.map((appointment) => (
-                    <tr key={appointment.appointmentId}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={appointment.appointmentId || appointment.appointmentCode} className="hover:bg-gray-50">
+                      <td>
                         <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              Dr. {appointment.doctorFirstName} {appointment.doctorLastName}
-                            </div>
-                            <div className="text-sm text-gray-500">{appointment.fieldName}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            Dr. {appointment.doctorFirstName || appointment.doctor?.firstName || ''}
+                            {' '}
+                            {appointment.doctorLastName || appointment.doctor?.lastName || ''}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {appointment.fieldName || appointment.doctor?.fieldName || ''}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDate(appointment.date)}</div>
-                        <div className="text-sm text-gray-500">
-                          {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+                      
+                      <td>
+                        <div className="text-sm font-medium">
+                          {formatDate(appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date))}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatTime(appointment.startTime || (appointment.appointmentTime && appointment.appointmentTime.time))}
+                          {appointment.endTime && ` - ${formatTime(appointment.endTime)}`}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{appointment.hospitalName}</div>
+                      
+                      <td>
+                        <div className="text-sm">
+                          {appointment.hospitalName || appointment.hospital?.hospitalName || ''}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          appointment.status === 'CANCELLED'
-                            ? 'bg-red-100 text-red-800'
-                            : appointment.status === 'COMPLETED'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {appointment.status || 'SCHEDULED'}
-                        </span>
+                      
+                      <td>
+                        {getStatusBadge(appointment.status)}
                       </td>
+                      
                       {activeTab === 'upcoming' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="text-right">
                           {appointment.status !== 'CANCELLED' && (
                             <button
-                              onClick={() => handleCancelAppointment(appointment.appointmentId)}
-                              className={`text-red-600 hover:text-red-900 ${
-                                cancellingId === appointment.appointmentId ? 'opacity-50 cursor-not-allowed' : ''
+                              onClick={() => handleCancelAppointment(appointment.appointmentId || appointment.appointmentCode)}
+                              disabled={cancellingId === (appointment.appointmentId || appointment.appointmentCode)}
+                              className={`text-sm text-red-600 hover:text-red-900 font-medium ${
+                                cancellingId === (appointment.appointmentId || appointment.appointmentCode) 
+                                  ? 'opacity-50 cursor-not-allowed' 
+                                  : ''
                               }`}
-                              disabled={cancellingId === appointment.appointmentId}
                             >
-                              {cancellingId === appointment.appointmentId ? 'Cancelling...' : 'Cancel'}
+                              {cancellingId === (appointment.appointmentId || appointment.appointmentCode) ? (
+                                <span className="flex items-center">
+                                  <i className="fas fa-circle-notch fa-spin mr-1"></i>
+                                  İptal Ediliyor...
+                                </span>
+                              ) : (
+                                <span className="flex items-center">
+                                  <i className="fas fa-times-circle mr-1"></i>
+                                  İptal Et
+                                </span>
+                              )}
                             </button>
                           )}
                         </td>
@@ -241,6 +313,26 @@ const PatientProfile = () => {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+        
+        <div className="card-footer flex justify-between items-center">
+          <button 
+            onClick={() => navigate('/')} 
+            className="btn btn-outline"
+          >
+            <i className="fas fa-arrow-left mr-1"></i>
+            Ana Sayfa
+          </button>
+          
+          {activeTab === 'upcoming' && (
+            <button 
+              onClick={() => navigate('/appointment')} 
+              className="btn btn-primary"
+            >
+              <i className="fas fa-calendar-plus mr-1"></i>
+              Yeni Randevu
+            </button>
           )}
         </div>
       </div>

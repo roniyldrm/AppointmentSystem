@@ -4,6 +4,7 @@ const AuthService = {
   login: async (username, password) => {
     try {
       console.log('AuthService login attempt with:', username);
+      let userData = null;
       
       // Try first with username field
       try {
@@ -14,64 +15,88 @@ const AuthService = {
         
         console.log('Login API response with username:', response);
         
-        if (response.data.accessToken) {
+        // Check for success and token access
+        if (response.data && (response.data.accessToken || response.data.token)) {
           console.log('Token received, storing authentication data...');
-          localStorage.setItem('token', response.data.accessToken);
+          // Store token (handle either accessToken or token in the response)
+          const token = response.data.accessToken || response.data.token;
+          localStorage.setItem('token', token);
           
           if (response.data.refreshToken) {
             localStorage.setItem('refreshToken', response.data.refreshToken);
           }
           
-          localStorage.setItem('userRole', response.data.role);
-          localStorage.setItem('userId', response.data.userCode);
+          // Store user ID - critical for appointments
+          if (response.data.userId || response.data.userCode) {
+            const userId = response.data.userId || response.data.userCode;
+            localStorage.setItem('userId', userId);
+            console.log('User ID stored:', userId);
+          } else if (response.data.user && response.data.user.userCode) {
+            localStorage.setItem('userId', response.data.user.userCode);
+            console.log('User ID stored from user object:', response.data.user.userCode);
+          } else {
+            console.warn('No user ID found in login response');
+          }
+          
+          if (response.data.role) {
+            localStorage.setItem('userRole', response.data.role);
+          }
           
           console.log('Authentication data stored successfully.');
-          return response.data;
+          userData = response.data;
         }
-      } catch (usernameError) {
-        console.log('Login with username failed, trying with email field...');
-        
-        // If username attempt fails, try with email field
-        const response = await apiClient.post('/auth/login', { 
-          email: username, // Use the same input but as email field
-          password 
-        });
-        
-        console.log('Login API response with email:', response);
-        
-        if (response.data.accessToken) {
-          console.log('Token received, storing authentication data...');
-          localStorage.setItem('token', response.data.accessToken);
+      } catch (error) {
+        console.error('Failed login with username field:', error);
+        // Continue to email attempt
+      }
+      
+      // If first attempt failed, try with email field
+      if (!userData) {
+        try {
+          const response = await apiClient.post('/auth/login', { 
+            email: username, 
+            password 
+          });
           
-          if (response.data.refreshToken) {
-            localStorage.setItem('refreshToken', response.data.refreshToken);
+          console.log('Login API response with email:', response);
+          
+          if (response.data && (response.data.accessToken || response.data.token)) {
+            console.log('Token received from email login, storing authentication data...');
+            const token = response.data.accessToken || response.data.token;
+            localStorage.setItem('token', token);
+            
+            if (response.data.refreshToken) {
+              localStorage.setItem('refreshToken', response.data.refreshToken);
+            }
+            
+            // Store user ID - critical for appointments
+            if (response.data.userId || response.data.userCode) {
+              const userId = response.data.userId || response.data.userCode;
+              localStorage.setItem('userId', userId);
+              console.log('User ID stored:', userId);
+            } else if (response.data.user && response.data.user.userCode) {
+              localStorage.setItem('userId', response.data.user.userCode);
+              console.log('User ID stored from user object:', response.data.user.userCode);
+            } else {
+              console.warn('No user ID found in login response');
+            }
+            
+            if (response.data.role) {
+              localStorage.setItem('userRole', response.data.role);
+            }
+            
+            console.log('Authentication data stored successfully.');
+            userData = response.data;
           }
-          
-          localStorage.setItem('userRole', response.data.role);
-          localStorage.setItem('userId', response.data.userCode);
-          
-          console.log('Authentication data stored successfully.');
-          return response.data;
+        } catch (error) {
+          console.error('Failed login with email field:', error);
+          throw new Error('Invalid username/email or password');
         }
       }
       
-      // If we get here without returning, there's no token
-      console.error('No token in response');
-      throw new Error('Authentication failed: No token received');
-      
+      return userData;
     } catch (error) {
-      console.error('AuthService login error:', error);
-      
-      // More detailed error info
-      if (error.response) {
-        console.error('Error status:', error.response.status);
-        console.error('Error data:', error.response.data);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-      } else {
-        console.error('Error setting up request:', error.message);
-      }
-      
+      console.error('Login error:', error);
       throw error;
     }
   },

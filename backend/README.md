@@ -115,6 +115,137 @@ The server will start on http://localhost:8080 by default.
 - `WS /ws/doctor/{doctorCode}`: Doctor notifications
 - `WS /ws/admin`: Admin notifications
 
+## WebSocket and Notification System
+
+The backend uses WebSocket for real-time notifications and MailerSend for email notifications.
+
+### WebSocket Implementation
+
+The system uses WebSocket to push real-time notifications to clients (patients, doctors, and admins).
+
+#### How to Use WebSocket Notifications:
+
+When an appointment is created, cancelled, or updated, send a notification through WebSocket:
+
+```go
+// In your appointment handler
+import (
+    "encoding/json"
+    "backend/websocket"
+)
+
+// After successfully creating an appointment
+func afterAppointmentCreation(appointment *Appointment, patient *Patient, doctor *Doctor, hospital *Hospital) {
+    // Format the data
+    date := appointment.Date.Format("02/01/2006") // DD/MM/YYYY
+    
+    // 1. Send email notification
+    helper.SendAppointmentConfirmationEmail(
+        patient.Email,
+        patient.Name,
+        doctor.Name,
+        hospital.Name,
+        date,
+        appointment.Time,
+    )
+    
+    // 2. Send SMS notification
+    helper.SendAppointmentConfirmationSMS(
+        patient.Phone,
+        patient.Name,
+        doctor.Name,
+        date,
+        appointment.Time,
+    )
+    
+    // 3. Send WebSocket notification
+    wsManager := websocket.GetManager()
+    
+    // Create notification data
+    notificationData := map[string]interface{}{
+        "appointmentId": appointment.ID,
+        "doctorName":    doctor.Name,
+        "hospitalName":  hospital.Name,
+        "date":          date,
+        "time":          appointment.Time,
+        "status":        "created",
+    }
+    
+    // Create WebSocket message for patient
+    patientNotification, _ := json.Marshal(map[string]interface{}{
+        "type":    "appointmentCreated",
+        "payload": notificationData,
+    })
+    
+    // Create WebSocket message for doctor
+    doctorNotification, _ := json.Marshal(map[string]interface{}{
+        "type":    "appointmentCreated",
+        "payload": notificationData,
+    })
+    
+    // Send to patient
+    wsManager.SendToUser(patient.ID, patientNotification)
+    
+    // Send to doctor
+    wsManager.SendToDoctor(doctor.ID, doctorNotification)
+}
+```
+
+### Email Notifications with MailerSend
+
+The system uses MailerSend for sending email notifications. To use the email service, add the MailerSend API key to your .env file:
+
+```
+MAILERSEND_API_KEY=your-api-key
+MAILERSEND_FROM_NAME=Horasan Hospital
+MAILERSEND_FROM_EMAIL=info@horasan.com
+```
+
+Make sure to add the MailerSend Go package to your project:
+
+```bash
+go get github.com/mailersend/mailersend-go
+```
+
+#### How to Use Email Notifications:
+
+```go
+// Send an appointment confirmation email
+err := helper.SendAppointmentConfirmationEmail(
+    "patient@example.com",
+    "Patient Name",
+    "Doctor Name",
+    "Hospital Name",
+    "01/01/2023",
+    "14:30",
+)
+
+if err != nil {
+    log.Printf("Failed to send email: %v", err)
+}
+```
+
+### SMS Notifications
+
+The system logs SMS messages for now. You can implement an actual SMS provider if needed.
+
+#### How to Use SMS Notifications:
+
+```go
+// Send an appointment confirmation SMS
+err := helper.SendAppointmentConfirmationSMS(
+    "+905551234567",
+    "Patient Name",
+    "Doctor Name",
+    "01/01/2023",
+    "14:30",
+)
+
+if err != nil {
+    log.Printf("Failed to send SMS: %v", err)
+}
+```
+
 ## License
 
 This project is licensed under the MIT License. 

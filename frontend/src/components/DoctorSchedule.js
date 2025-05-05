@@ -58,18 +58,29 @@ const DoctorSchedule = () => {
   // Fetch time slots when date changes
   useEffect(() => {
     const fetchTimeSlots = async () => {
-      if (!selectedDate) return;
+      if (!selectedDate || !doctorId) return;
       
       try {
         setLoading(true);
+        console.log(`Fetching time slots for doctor ${doctorId} on date ${selectedDate}`);
         const response = await AppointmentService.getDoctorTimeSlots(doctorId, selectedDate);
-        setTimeSlots(response.data);
+        console.log("Time slots response:", response.data);
+        
+        if (Array.isArray(response.data)) {
+          setTimeSlots(response.data);
+        } else {
+          console.error("Response is not an array:", response.data);
+          setError("Invalid time slots data received");
+          setTimeSlots([]);
+        }
+        
         // Reset selections when date changes
         setExpandedHours([]);
         setSelectedSlot(null);
       } catch (err) {
         setError('Failed to load available time slots. Please try again later.');
         console.error('Error fetching time slots:', err);
+        setTimeSlots([]);
       } finally {
         setLoading(false);
       }
@@ -109,11 +120,14 @@ const DoctorSchedule = () => {
       
       const appointmentData = {
         doctorId: doctorId,
-        timeSlotId: selectedSlot.slotId,
+        timeSlot: selectedSlot,
         date: selectedDate
       };
       
-      await AppointmentService.createAppointment(appointmentData);
+      console.log("Sending appointment data:", appointmentData);
+      
+      const response = await AppointmentService.createAppointment(appointmentData);
+      console.log("Appointment creation response:", response);
       
       // Navigate to confirmation page
       navigate('/appointment/confirmation', {
@@ -124,7 +138,7 @@ const DoctorSchedule = () => {
         }
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to book appointment. Please try again later.');
+      setError(err.message || 'Failed to book appointment. Please try again later.');
       console.error('Error booking appointment:', err);
     } finally {
       setLoading(false);
@@ -135,7 +149,17 @@ const DoctorSchedule = () => {
   const getHourlySlots = () => {
     const hourlySlots = {};
     
+    if (!Array.isArray(timeSlots)) {
+      console.error("timeSlots is not an array:", timeSlots);
+      return {};
+    }
+    
     timeSlots.forEach(slot => {
+      if (!slot || !slot.startTime) {
+        console.error("Invalid slot:", slot);
+        return;
+      }
+      
       const hour = slot.startTime.substring(0, 2);
       if (!hourlySlots[hour]) {
         hourlySlots[hour] = [];

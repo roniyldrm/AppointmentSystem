@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
+import Notifications from './components/Notifications';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Components for all users
@@ -34,7 +36,7 @@ const Navbar = () => {
     <nav className="bg-blue-600 text-white p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <Link to="/" className="text-xl font-bold">Hospital Appointment System</Link>
-        <div className="space-x-4">
+        <div className="flex items-center space-x-4">
           <Link to="/" className={`hover:text-blue-200 ${location.pathname === '/' ? 'text-blue-200' : ''}`}>Home</Link>
           
           {isAuthenticated && isPatient && (
@@ -58,6 +60,10 @@ const Navbar = () => {
               <Link to="/admin/hospitals" className={`hover:text-blue-200 ${location.pathname === '/admin/hospitals' ? 'text-blue-200' : ''}`}>Manage Hospitals</Link>
               <Link to="/admin/appointments" className={`hover:text-blue-200 ${location.pathname === '/admin/appointments' ? 'text-blue-200' : ''}`}>Manage Appointments</Link>
             </>
+          )}
+          
+          {isAuthenticated && (
+            <Notifications />
           )}
           
           {isAuthenticated ? (
@@ -140,7 +146,9 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <NotificationsProvider>
+        <AppContent />
+      </NotificationsProvider>
     </AuthProvider>
   );
 };

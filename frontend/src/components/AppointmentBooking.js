@@ -18,6 +18,20 @@ import {
 import AppointmentService from '../services/appointment';
 import { format } from 'date-fns';
 
+// Field names mapping based on field codes
+const fieldNameMap = {
+  1: "Dahiliye",
+  2: "Çocuk Sağlığı ve Hastalıkları",
+  3: "Kulak Burun Boğaz Hastalıkları",
+  4: "Göz Hastalıkları",
+  5: "Kadın Hastalıkları ve Doğum",
+  6: "Ortopedi ve Travmatoloji",
+  7: "Genel Cerrahi",
+  8: "Deri ve Zührevi Hastalıkları",
+  9: "Nöroloji",
+  10: "Kardiyoloji"
+};
+
 const AppointmentBooking = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -50,7 +64,9 @@ const AppointmentBooking = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
+      console.warn("No authentication token found, redirecting to login");
       navigate("/login");
+      return;
     }
     
     // Fetch cities when component loads
@@ -59,13 +75,42 @@ const AppointmentBooking = () => {
 
   const fetchCities = async () => {
     try {
+      console.log("Starting to fetch cities...");
       setLoading(true);
+      
+      // Check if token exists
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token available for fetching cities");
+        setError("Authentication required. Please log in again.");
+        navigate("/login");
+        return;
+      }
+      
+      console.log("Using token for authentication:", token.substring(0, 10) + "...");
       const response = await AppointmentService.getCities();
-      console.log("Cities response:", response.data);
-      setCities(response.data);
+      console.log("Cities response:", response);
+      
+      if (response && response.data) {
+        console.log("Cities data:", response.data);
+        setCities(response.data);
+        
+        if (Array.isArray(response.data) && response.data.length === 0) {
+          setError("No cities found. The database may be empty.");
+        }
+      } else {
+        console.error("Invalid response format:", response);
+        setError("Received invalid data from server");
+      }
     } catch (err) {
-      setError("Failed to fetch cities. Please try again.");
       console.error("Error fetching cities:", err);
+      if (err.response?.status === 401) {
+        console.warn("Authentication error (401) - redirecting to login");
+        localStorage.removeItem('token'); // Clear invalid token
+        navigate("/login"); 
+      } else {
+        setError(`Failed to fetch cities: ${err.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -88,6 +133,7 @@ const AppointmentBooking = () => {
     try {
       setLoading(true);
       const response = await AppointmentService.getFields(provinceCode);
+      console.log("Fields response:", response.data);
       setFields(response.data);
     } catch (err) {
       setError("Failed to fetch fields. Please try again.");
@@ -145,7 +191,8 @@ const AppointmentBooking = () => {
     // Enable/disable fields
     setDistrictEnabled(Boolean(provinceCode));
     setFieldEnabled(Boolean(provinceCode));
-    setHospitalEnabled(false);
+    // Enable hospital selection as soon as city is selected
+    setHospitalEnabled(Boolean(provinceCode));
     setDoctorEnabled(false);
     
     if (provinceCode) {
@@ -155,6 +202,9 @@ const AppointmentBooking = () => {
         fetchDistricts(provinceCode);
         // Fetch fields for the selected city
         fetchFields(provinceCode);
+        // Fetch hospitals for the selected city right away
+        const response = await AppointmentService.getHospitals(provinceCode);
+        setHospitals(response.data);
       } catch (err) {
         setError("Failed to load data. Please try again later.");
         console.error("Error fetching data:", err);
@@ -164,6 +214,7 @@ const AppointmentBooking = () => {
     } else {
       setDistricts([]);
       setFields([]);
+      setHospitals([]);
     }
   };
   
@@ -174,16 +225,37 @@ const AppointmentBooking = () => {
     // Reset dependent selections
     setSelectedHospital("");
     setSelectedDoctor("");
-    setHospitals([]);
     setDoctors([]);
     
-    // Enable/disable fields
-    setHospitalEnabled(false);
+    // Keep hospital enabled regardless of district selection
+    // Hospital should remain enabled as long as a city is selected
+    setHospitalEnabled(Boolean(selectedCity));
     setDoctorEnabled(false);
     
-    // If field is selected, fetch hospitals
-    if (selectedField && selectedCity) {
-      fetchHospitals(selectedCity, districtCode, selectedField);
+    // If a district is selected, fetch hospitals for that district
+    if (districtCode) {
+      try {
+        setLoading(true);
+        const response = await AppointmentService.getHospitals(selectedCity, districtCode);
+        setHospitals(response.data);
+      } catch (err) {
+        setError("Failed to fetch hospitals for district. Please try again.");
+        console.error("Error fetching hospitals for district:", err);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // If district is cleared, reload hospitals for the city
+      try {
+        setLoading(true);
+        const response = await AppointmentService.getHospitals(selectedCity);
+        setHospitals(response.data);
+      } catch (err) {
+        setError("Failed to reload hospitals. Please try again.");
+        console.error("Error reloading hospitals:", err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
   
@@ -194,15 +266,23 @@ const AppointmentBooking = () => {
     // Reset dependent selections
     setSelectedHospital("");
     setSelectedDoctor("");
-    setHospitals([]);
     setDoctors([]);
     
-    // Enable hospital selection if city is selected
-    setHospitalEnabled(Boolean(fieldCode && selectedCity));
+    // Hospital selection should already be enabled from city selection
     setDoctorEnabled(false);
     
+    // If both city and field are selected, fetch filtered hospitals
     if (fieldCode && selectedCity) {
-      fetchHospitals(selectedCity, selectedDistrict, fieldCode);
+      try {
+        setLoading(true);
+        const response = await AppointmentService.getHospitals(selectedCity, selectedDistrict, fieldCode);
+        setHospitals(response.data);
+      } catch (err) {
+        setError("Failed to fetch hospitals. Please try again.");
+        console.error("Error fetching hospitals:", err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
   
@@ -232,8 +312,8 @@ const AppointmentBooking = () => {
   };
   
   const checkSearchEnabled = () => {
-    // Enable search if city and field are selected
-    setSearchEnabled(Boolean(selectedCity && selectedField));
+    // Enable search if either city and field OR a hospital is selected
+    setSearchEnabled(Boolean((selectedCity && selectedField) || selectedHospital));
   };
   
   const handleSearch = async () => {
@@ -252,6 +332,7 @@ const AppointmentBooking = () => {
       if (endDate) params.endDate = format(new Date(endDate), "yyyy-MM-dd");
       
       const response = await AppointmentService.getDoctors(params);
+      console.log("Doctors search response:", response.data);
       setDoctors(response.data);
       
       if (response.data.length === 0) {
@@ -265,174 +346,232 @@ const AppointmentBooking = () => {
     }
   };
   
-  const handleDoctorSelect = (doctorId) => {
-    navigate(`/appointment/doctor/${doctorId}`);
+  const handleDoctorSelect = (doctorCode) => {
+    // Verify doctorCode exists before navigation
+    if (!doctorCode) {
+      console.error("Doctor code is undefined or empty");
+      setError("Unable to select doctor. Missing doctor ID.");
+      return;
+    }
+    console.log("Navigating to doctor schedule with code:", doctorCode);
+    navigate(`/appointment/doctor/${doctorCode}`);
+  };
+
+  // Helper function to get field name from field code
+  const getFieldName = (fieldCode) => {
+    return fieldNameMap[fieldCode] || `Field ${fieldCode}`;
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Book an Appointment
-        </Typography>
+    <div className="app-container">
+      <div className="card">
+        <div className="card-header">
+          <h1 className="page-title">Randevu Al</h1>
+          {loading && (
+            <span className="inline-block ml-3">
+              <i className="fas fa-circle-notch fa-spin text-primary"></i>
+            </span>
+          )}
+        </div>
         
-        {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
-        
-        <Box component="form" sx={{ mt: 3 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel>City</InputLabel>
-                <Select
+        <div className="card-body">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <i className="fas fa-exclamation-circle text-red-400"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <form className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* City Selection */}
+              <div className="form-group">
+                <label htmlFor="city" className="form-label">Şehir <span className="text-red-500">*</span></label>
+                <select
+                  id="city"
                   value={selectedCity}
                   onChange={handleCityChange}
-                  label="City"
+                  className="form-select"
+                  required
                 >
+                  <option value="">Şehir Seçiniz</option>
                   {cities.map((city) => (
-                    <MenuItem key={city.code} value={city.code}>
-                      {city.name}
-                    </MenuItem>
+                    <option key={city.code} value={city.code}>{city.name}</option>
                   ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={!selectedCity}>
-                <InputLabel>District</InputLabel>
-                <Select
+                </select>
+              </div>
+              
+              {/* District Selection */}
+              <div className="form-group">
+                <label htmlFor="district" className="form-label">İlçe</label>
+                <select
+                  id="district"
                   value={selectedDistrict}
                   onChange={handleDistrictChange}
-                  label="District"
+                  className="form-select"
+                  disabled={!districtEnabled}
                 >
-                  <MenuItem value="">All Districts</MenuItem>
+                  <option value="">Tüm İlçeler</option>
                   {districts.map((district) => (
-                    <MenuItem key={district.districtCode} value={district.districtCode}>
+                    <option key={district.districtCode} value={district.districtCode}>
                       {district.districtName}
-                    </MenuItem>
+                    </option>
                   ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={!selectedCity}>
-                <InputLabel>Field</InputLabel>
-                <Select
+                </select>
+              </div>
+              
+              {/* Field Selection */}
+              <div className="form-group">
+                <label htmlFor="field" className="form-label">Uzmanlık Alanı</label>
+                <select
+                  id="field"
                   value={selectedField}
                   onChange={handleFieldChange}
-                  label="Field"
+                  className="form-select"
+                  disabled={!fieldEnabled}
                 >
-                  <MenuItem value="">Select Specialty</MenuItem>
-                  {fields.map((field) => (
-                    <MenuItem key={field.fieldCode} value={field.fieldCode}>
-                      {field.fieldName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={!selectedHospital}>
-                <InputLabel>Hospital</InputLabel>
-                <Select
+                  <option value="">Uzmanlık Alanı Seçiniz</option>
+                  {Array.isArray(fields) && fields.map((field) => {
+                    // If fields are just numbers, fetch the names from the fieldMap
+                    if (typeof field === 'number') {
+                      return (
+                        <option key={field} value={field}>
+                          {getFieldName(field)}
+                        </option>
+                      );
+                    }
+                    // If fields are objects with fieldCode and fieldName
+                    return (
+                      <option key={field.fieldCode} value={field.fieldCode}>
+                        {field.fieldName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              
+              {/* Hospital Selection */}
+              <div className="form-group">
+                <label htmlFor="hospital" className="form-label">Hastane</label>
+                <select
+                  id="hospital"
                   value={selectedHospital}
                   onChange={handleHospitalChange}
-                  label="Hospital"
+                  className="form-select"
+                  disabled={!hospitalEnabled}
                 >
-                  <MenuItem value="">All Hospitals</MenuItem>
+                  <option value="">Tüm Hastaneler</option>
                   {hospitals.map((hospital) => (
-                    <MenuItem key={hospital.hospitalCode} value={hospital.hospitalCode}>
+                    <option key={hospital.hospitalCode} value={hospital.hospitalCode}>
                       {hospital.hospitalName}
-                    </MenuItem>
+                    </option>
                   ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel shrink>Start Date</InputLabel>
+                </select>
+              </div>
+              
+              {/* Date Range */}
+              <div className="form-group">
+                <label htmlFor="startDate" className="form-label">Başlangıç Tarihi</label>
                 <input
+                  id="startDate"
                   type="date"
                   value={startDate}
                   onChange={handleStartDateChange}
-                  style={{ 
-                    padding: '16.5px 14px',
-                    marginTop: '16px',
-                    border: '1px solid rgba(0, 0, 0, 0.23)',
-                    borderRadius: '4px'
-                  }}
+                  className="form-input"
+                  min={new Date().toISOString().split('T')[0]}
                 />
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel shrink>End Date</InputLabel>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="endDate" className="form-label">Bitiş Tarihi</label>
                 <input
+                  id="endDate"
                   type="date"
                   value={endDate}
                   onChange={handleEndDateChange}
-                  style={{ 
-                    padding: '16.5px 14px',
-                    marginTop: '16px',
-                    border: '1px solid rgba(0, 0, 0, 0.23)',
-                    borderRadius: '4px'
-                  }}
+                  className="form-input"
+                  min={startDate || new Date().toISOString().split('T')[0]}
                 />
-              </FormControl>
-            </Grid>
+              </div>
+            </div>
             
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                color="primary"
+            {/* Search Button */}
+            <div className="pt-4 flex justify-end">
+              <button
+                type="button"
                 onClick={handleSearch}
                 disabled={!searchEnabled || loading}
-                fullWidth
+                className={`btn ${searchEnabled ? 'btn-primary' : 'btn-outline opacity-50 cursor-not-allowed'}`}
               >
-                {loading ? <CircularProgress size={24} /> : "Search for Doctors"}
-              </Button>
-            </Grid>
-          </Grid>
-        </Box>
-        
-        {doctors.length > 0 && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              Available Doctors
-            </Typography>
-            <Grid container spacing={2}>
-              {doctors.map((doctor) => (
-                <Grid item xs={12} sm={6} md={4} key={doctor.id}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: 6
-                      }
-                    }}
-                    onClick={() => handleDoctorSelect(doctor.id)}
+                {loading ? (
+                  <>
+                    <i className="fas fa-circle-notch fa-spin"></i>
+                    <span>Aranıyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-search"></i>
+                    <span>Doktor Ara</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      {/* Doctors List */}
+      {doctors.length > 0 && (
+        <div className="mt-8">
+          <h2 className="page-subtitle flex items-center mb-6">
+            <i className="fas fa-user-md text-primary mr-2"></i>
+            <span>Uygun Doktorlar</span>
+            <span className="ml-2 badge badge-blue">{doctors.length} doktor bulundu</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {doctors.map((doctor) => (
+              <div key={doctor.doctorCode || `doctor-${Math.random()}`} className="doctor-card card-hover">
+                <div className="doctor-card-header">
+                  <div className="doctor-avatar">
+                    <i className="fas fa-user-md"></i>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Dr. {doctor.doctorName || `${doctor.firstName || ''} ${doctor.lastName || ''}`}
+                  </h3>
+                  <p className="text-sm text-primary mt-1">
+                    {getFieldName(doctor.fieldCode || doctor.field)}
+                  </p>
+                </div>
+                <div className="doctor-card-body">
+                  {doctor.hospitalName && (
+                    <div className="flex items-center mb-2 text-sm text-gray-600">
+                      <i className="fas fa-hospital mr-2"></i>
+                      <span>{doctor.hospitalName}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="doctor-card-footer">
+                  <button
+                    onClick={() => handleDoctorSelect(doctor.doctorCode)}
+                    className="btn btn-primary w-full"
                   >
-                    <Typography variant="h6">{doctor.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {doctor.field}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        )}
-      </Paper>
-    </Container>
+                    <i className="fas fa-calendar-check"></i>
+                    <span>Randevu Al</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

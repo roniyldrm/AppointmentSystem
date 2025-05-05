@@ -5,8 +5,11 @@ import (
 	"backend/middleware"
 	"backend/mongodb"
 	wsManager "backend/websocket"
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -73,6 +76,7 @@ func main() {
 	protected.HandleFunc("/doctors", handleGetAllDoctors).Methods("GET")
 	protected.HandleFunc("/doctor/{doctorCode}", handleGetDoctor).Methods("GET")
 	protected.HandleFunc("/doctors/{hospitalCode}", handleGetDoctorsByHospitalCode).Methods("GET")
+	protected.HandleFunc("/doctor/{doctorCode}/timeslots", handleGetDoctorTimeSlots).Methods("GET")
 	protected.HandleFunc("/appointment", handleCreateAppointment).Methods("POST")
 	protected.HandleFunc("/appointment/{appointmentCode}", handleGetAppointment).Methods("GET")
 	protected.HandleFunc("/user/{userCode}/appointments", handleGetAppointmentsByUserCode).Methods("GET")
@@ -383,10 +387,56 @@ func handleUpdateDoctor(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
-	var appointment api.Appointment
-	json.NewDecoder(r.Body).Decode(&appointment)
-	err := api.CreateAppointment(client, appointment)
+	// Enable CORS header for the appointment endpoint
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Debug request body
+	requestBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		http.Error(w, "Error reading request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Log the raw request for debugging
+	log.Println("Appointment creation request body:", string(requestBody))
+
+	// Create a new reader from the request body
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+
+	var appointment api.Appointment
+	if err := json.NewDecoder(r.Body).Decode(&appointment); err != nil {
+		http.Error(w, "Error parsing appointment data: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if appointment.DoctorCode == "" {
+		http.Error(w, "Missing doctor code", http.StatusBadRequest)
+		return
+	}
+
+	if appointment.UserCode == "" {
+		http.Error(w, "Missing user code", http.StatusBadRequest)
+		return
+	}
+
+	if appointment.AppointmentTime.Date == "" || appointment.AppointmentTime.Time == "" {
+		http.Error(w, "Missing appointment date or time", http.StatusBadRequest)
+		return
+	}
+
+	// Debug appointment object after parsing
+	log.Printf("Creating appointment: Doctor=%s, User=%s, Date=%s, Time=%s",
+		appointment.DoctorCode,
+		appointment.UserCode,
+		appointment.AppointmentTime.Date,
+		appointment.AppointmentTime.Time)
+
+	err = api.CreateAppointment(client, appointment)
+	if err != nil {
+		log.Println("Error creating appointment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -411,7 +461,12 @@ func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
 	jsonNotification, _ = json.Marshal(notificationContent)
 	wsClientManager.SendToAdmin(jsonNotification)
 
+	// Return the created appointment details
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"appointmentCode": appointment.AppointmentCode,
+		"message":         "Appointment created successfully",
+	})
 }
 
 func handleDeleteAppointment(w http.ResponseWriter, r *http.Request) {
@@ -623,6 +678,93 @@ func handleGetPastAppointmentsByUserCode(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(appointments); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleGetDoctorTimeSlots(w http.ResponseWriter, r *http.Request) {
+	doctorCode := mux.Vars(r)["doctorCode"]
+	date := r.URL.Query().Get("date")
+
+	// Validate inputs
+	if doctorCode == "" || date == "" {
+		http.Error(w, "Missing doctorCode or date parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Get doctor info to get working hours
+	doctor, err := api.GetDoctor(client, doctorCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Get all appointments for this doctor on this date
+	appointments := api.GetAppointmentsByDoctorCode(client, doctorCode)
+
+	// Filter appointments for the requested date
+	bookedSlots := make(map[string]bool)
+	for _, appointment := range appointments {
+		if appointment.AppointmentTime.Date == date {
+			bookedSlots[appointment.AppointmentTime.Time] = true
+		}
+	}
+
+	// Generate time slots based on doctor's working hours
+	workStart := doctor.WorkHours.Start
+	workEnd := doctor.WorkHours.End
+
+	// Default values if not specified
+	if workStart == "" {
+		workStart = "09:00"
+	}
+	if workEnd == "" {
+		workEnd = "17:00"
+	}
+
+	// Parse start and end times
+	startHour, startMin := 9, 0
+	endHour, endMin := 17, 0
+
+	fmt.Sscanf(workStart, "%d:%d", &startHour, &startMin)
+	fmt.Sscanf(workEnd, "%d:%d", &endHour, &endMin)
+
+	// Generate slots - assuming 15 minute intervals
+	var timeSlots []map[string]interface{}
+	slotId := 1
+
+	for hour := startHour; hour < endHour; hour++ {
+		for minute := 0; minute < 60; minute += 15 {
+			// Skip minutes before start time for first hour
+			if hour == startHour && minute < startMin {
+				continue
+			}
+
+			// Skip minutes after end time for last hour
+			if hour == endHour-1 && minute >= endMin {
+				continue
+			}
+
+			// Format time as HH:MM
+			timeStr := fmt.Sprintf("%02d:%02d", hour, minute)
+
+			// Check if slot is already booked
+			_, isBooked := bookedSlots[timeStr]
+
+			// Add slot to response
+			timeSlots = append(timeSlots, map[string]interface{}{
+				"slotId":    slotId,
+				"startTime": timeStr,
+				"endTime":   fmt.Sprintf("%02d:%02d", hour+(minute+15)/60, (minute+15)%60),
+				"available": !isBooked,
+			})
+
+			slotId++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(timeSlots); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

@@ -26,9 +26,9 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      console.log('Request with auth token');
+      console.log('Request with auth token:', token.substring(0, 10) + '...');
     } else {
-      console.log('Request without auth token');
+      console.log('Request without auth token - this may cause 401 errors');
     }
     
     return config;
@@ -48,6 +48,12 @@ apiClient.interceptors.response.use(
     // If status code is not successful, convert to error
     if (response.status >= 400) {
       console.error(`Error response ${response.status}:`, response.data);
+      
+      // If unauthorized and token exists, attempt to refresh
+      if (response.status === 401 && localStorage.getItem('token')) {
+        console.warn('Received 401 with existing token - may need refresh');
+      }
+      
       return Promise.reject({
         response: response,
         message: response.data?.message || `Error ${response.status}`
@@ -58,6 +64,15 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     console.error('Response interceptor caught error:', error);
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error - no response from server');
+      return Promise.reject({
+        message: 'Network error - could not connect to server'
+      });
+    }
+    
     const originalRequest = error.config;
     
     if (!originalRequest) {
@@ -74,18 +89,33 @@ apiClient.interceptors.response.use(
         // Call refresh token endpoint
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) {
+          console.error('No refresh token available - redirecting to login');
           throw new Error('No refresh token available');
         }
         
         console.log('Calling refresh token endpoint');
-        const refreshResponse = await axios.post(`${API_URL}/auth/refresh-token`, { 
+        const refreshResponse = await axios.post(`${API_URL}/auth/refresh`, { 
           refreshToken 
         });
         
-        // Store new tokens
-        const { token, refreshToken: newRefreshToken } = refreshResponse.data;
+        // Check if refresh was successful
+        if (!refreshResponse.data || 
+            !refreshResponse.data.accessToken && !refreshResponse.data.token) {
+          console.error('Refresh token response did not contain a valid token:', refreshResponse.data);
+          throw new Error('Invalid refresh response');
+        }
+        
+        // Store new tokens - handle different response formats
+        const token = refreshResponse.data.accessToken || refreshResponse.data.token;
+        const newRefreshToken = refreshResponse.data.refreshToken || refreshResponse.data.refresh_token;
+        
         localStorage.setItem('token', token);
-        localStorage.setItem('refreshToken', newRefreshToken);
+        console.log('New token stored:', token.substring(0, 10) + '...');
+        
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+          console.log('New refresh token stored');
+        }
         
         console.log('Token refreshed successfully');
         
@@ -98,6 +128,8 @@ apiClient.interceptors.response.use(
         // If refresh token fails, redirect to login
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userId');
         
         console.log('Redirecting to login page due to auth failure');
         // Use timeout to make sure console messages are visible before redirect

@@ -22,11 +22,28 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       const userData = await AuthService.login(username, password);
+      
+      // Log what we received from auth service
+      console.log('AuthContext: Login response data:', userData);
+      
+      // Extract user ID with fallbacks to different possible property names
+      const userId = userData.userCode || userData.userId || 
+                    (userData.user && userData.user.userCode) || '';
+                    
+      // Set current user with both id and userCode properties to ensure compatibility
       setCurrentUser({
-        token: userData.token,
+        token: userData.token || userData.accessToken,
         role: userData.role,
-        id: userData.userId
+        id: userId,
+        userCode: userId // Include both formats
       });
+      
+      console.log('AuthContext: User data set to:', {
+        token: userData.token || userData.accessToken ? '(exists)' : '(missing)',
+        role: userData.role,
+        id: userId
+      });
+      
       return userData;
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');

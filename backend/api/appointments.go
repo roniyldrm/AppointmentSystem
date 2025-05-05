@@ -116,21 +116,27 @@ func CreateAppointment(client *mongo.Client, appointment Appointment) error {
 		return err
 	}
 
-	// Send email notification
-	err = helper.SendAppointmentConfirmation(
+	// Format date for display
+	displayDate := appointment.AppointmentTime.Date
+	if t, err := time.Parse("2006-01-02", appointment.AppointmentTime.Date); err == nil {
+		displayDate = t.Format("02/01/2006") // DD/MM/YYYY format
+	}
+
+	// Send email notification using our MailerSend service
+	err = helper.SendAppointmentConfirmationEmail(
 		user.Email,
-		user.UserCode, // Should be user name, using userCode as placeholder
+		user.UserCode, // Using UserCode since we don't have a separate name field
 		doctor.DoctorName,
 		hospital.HospitalName,
-		appointment.AppointmentTime.Date,
+		displayDate,
 		appointment.AppointmentTime.Time,
 	)
 	if err != nil {
-		log.Println("Error sending user email:", err)
+		log.Println("Error sending email notification:", err)
+		// Continue despite email error - don't fail the appointment creation
+	} else {
+		log.Println("Appointment confirmation email sent successfully to:", user.Email)
 	}
-
-	// TODO: Get doctor's email and send notification
-	// For now, we'll skip this as we don't have doctor emails in the model
 
 	return nil
 }
@@ -143,8 +149,17 @@ func DeleteAppointment(client *mongo.Client, appointmentCode string) error {
 	}
 
 	// Get user and doctor details for email
-	user, _ := GetUser(client, appointment.UserCode)
-	doctor, _ := GetDoctor(client, appointment.DoctorCode)
+	user, err := GetUser(client, appointment.UserCode)
+	if err != nil {
+		log.Println("Error getting user:", err)
+		// Continue despite error
+	}
+
+	doctor, err := GetDoctor(client, appointment.DoctorCode)
+	if err != nil {
+		log.Println("Error getting doctor:", err)
+		// Continue despite error
+	}
 
 	// Remove from Google Calendar if enabled
 	if useGoogleCalendar && appointment.CalendarEventID != "" {
@@ -170,16 +185,33 @@ func DeleteAppointment(client *mongo.Client, appointmentCode string) error {
 
 	// If we have user and doctor, send cancellation emails
 	if user != nil && doctor != nil {
-		hospital, _ := GetHospital(client, doctor.HospitalCode)
+		hospital, err := GetHospital(client, doctor.HospitalCode)
+		if err != nil {
+			log.Println("Error getting hospital:", err)
+			// Continue despite error
+		}
+
 		if hospital != nil {
-			helper.SendAppointmentCancellation(
+			// Format date for display
+			displayDate := appointment.AppointmentTime.Date
+			if t, err := time.Parse("2006-01-02", appointment.AppointmentTime.Date); err == nil {
+				displayDate = t.Format("02/01/2006") // DD/MM/YYYY format
+			}
+
+			// Send cancellation email
+			err = helper.SendAppointmentCancellationEmail(
 				user.Email,
-				user.UserCode, // Should be user name, using userCode as placeholder
+				user.UserCode,
 				doctor.DoctorName,
 				hospital.HospitalName,
-				appointment.AppointmentTime.Date,
+				displayDate,
 				appointment.AppointmentTime.Time,
 			)
+			if err != nil {
+				log.Println("Error sending cancellation email:", err)
+			} else {
+				log.Println("Cancellation email sent successfully to:", user.Email)
+			}
 		}
 	}
 

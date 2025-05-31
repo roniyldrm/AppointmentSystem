@@ -38,6 +38,32 @@ const AuthService = {
             console.warn('No user ID found in login response');
           }
           
+          // Store user email for profile usage
+          if (username.includes('@')) {
+            localStorage.setItem('userEmail', username);
+            console.log('User email stored:', username);
+          }
+          
+          // Store additional user data if available
+          if (response.data.user) {
+            if (response.data.user.firstName) {
+              localStorage.setItem('userFirstName', response.data.user.firstName);
+              console.log('User firstName stored:', response.data.user.firstName);
+            }
+            if (response.data.user.lastName) {
+              localStorage.setItem('userLastName', response.data.user.lastName);
+              console.log('User lastName stored:', response.data.user.lastName);
+            }
+            if (response.data.user.phone) {
+              localStorage.setItem('userPhone', response.data.user.phone);
+              console.log('User phone stored:', response.data.user.phone);
+            }
+            if (response.data.user.email) {
+              localStorage.setItem('userEmail', response.data.user.email);
+              console.log('User email stored from response:', response.data.user.email);
+            }
+          }
+          
           if (response.data.role) {
             localStorage.setItem('userRole', response.data.role);
           }
@@ -81,6 +107,32 @@ const AuthService = {
               console.warn('No user ID found in login response');
             }
             
+            // Store user email for profile usage
+            if (username.includes('@')) {
+              localStorage.setItem('userEmail', username);
+              console.log('User email stored:', username);
+            }
+            
+            // Store additional user data if available
+            if (response.data.user) {
+              if (response.data.user.firstName) {
+                localStorage.setItem('userFirstName', response.data.user.firstName);
+                console.log('User firstName stored:', response.data.user.firstName);
+              }
+              if (response.data.user.lastName) {
+                localStorage.setItem('userLastName', response.data.user.lastName);
+                console.log('User lastName stored:', response.data.user.lastName);
+              }
+              if (response.data.user.phone) {
+                localStorage.setItem('userPhone', response.data.user.phone);
+                console.log('User phone stored:', response.data.user.phone);
+              }
+              if (response.data.user.email) {
+                localStorage.setItem('userEmail', response.data.user.email);
+                console.log('User email stored from response:', response.data.user.email);
+              }
+            }
+            
             if (response.data.role) {
               localStorage.setItem('userRole', response.data.role);
             }
@@ -105,6 +157,21 @@ const AuthService = {
     try {
       const response = await apiClient.post('/auth/register', userData);
       console.log('Register response:', response.data);
+      
+      // Store user information from registration
+      if (userData.email) {
+        localStorage.setItem('userEmail', userData.email);
+      }
+      if (userData.firstName) {
+        localStorage.setItem('userFirstName', userData.firstName);
+      }
+      if (userData.lastName) {
+        localStorage.setItem('userLastName', userData.lastName);
+      }
+      if (userData.phone) {
+        localStorage.setItem('userPhone', userData.phone);
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Register error:', error);
@@ -117,6 +184,10 @@ const AuthService = {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userFirstName');
+    localStorage.removeItem('userLastName');
+    localStorage.removeItem('userPhone');
   },
   
   getCurrentUser: () => {

@@ -191,21 +191,89 @@ const AppointmentService = {
         return response;
       }
       
-      // For each appointment, fetch additional details if needed
+      // For each appointment, fetch additional details
       const enhancedAppointments = await Promise.all(
         response.data.map(async (appointment) => {
           try {
-            // If the appointment already has doctor/hospital info, return as is
-            if (appointment.doctor && appointment.hospital) {
-              return appointment;
+            // Get appointment details which include doctorCode
+            const appointmentCode = appointment.appointmentCode;
+            console.log(`Getting details for appointment: ${appointmentCode}`);
+            
+            const detailsResponse = await apiClient.get(`/appointment/${appointmentCode}`);
+            const appointmentWithDetails = { ...appointment, ...detailsResponse.data };
+            
+            // Get doctor details
+            const doctorCode = appointmentWithDetails.doctorCode;
+            if (doctorCode) {
+              try {
+                console.log(`Getting doctor info for: ${doctorCode}`);
+                const doctorResponse = await apiClient.get(`/doctor/${doctorCode}`);
+                
+                if (doctorResponse && doctorResponse.data) {
+                  // Extract doctor data
+                  const doctor = doctorResponse.data;
+                  
+                  // Add doctor details to the appointment
+                  appointmentWithDetails.doctor = doctor;
+                  
+                  // Add individual doctor fields for easier access in UI
+                  appointmentWithDetails.doctorName = doctor.doctorName;
+                  
+                  // If doctor name has first and last name properties, extract them
+                  const nameParts = doctor.doctorName ? doctor.doctorName.split(' ') : [];
+                  if (nameParts.length >= 2) {
+                    appointmentWithDetails.doctorFirstName = nameParts[0];
+                    appointmentWithDetails.doctorLastName = nameParts.slice(1).join(' ');
+                  } else if (doctor.doctorName) {
+                    // If there's only one name, use it as firstName
+                    appointmentWithDetails.doctorFirstName = doctor.doctorName;
+                    appointmentWithDetails.doctorLastName = '';
+                  }
+                  
+                  // Add field name - handle both field and fieldName properties
+                  if (doctor.fieldName) {
+                    appointmentWithDetails.fieldName = doctor.fieldName;
+                  } else if (doctor.field !== undefined) {
+                    // Map field code to field name using the common mapping
+                    const fieldNameMap = {
+                      1: "Dahiliye",
+                      2: "Çocuk Sağlığı ve Hastalıkları",
+                      3: "Kulak Burun Boğaz Hastalıkları",
+                      4: "Göz Hastalıkları",
+                      5: "Kadın Hastalıkları ve Doğum",
+                      6: "Ortopedi ve Travmatoloji",
+                      7: "Genel Cerrahi",
+                      8: "Deri ve Zührevi Hastalıkları",
+                      9: "Nöroloji",
+                      10: "Kardiyoloji"
+                    };
+                    appointmentWithDetails.fieldName = fieldNameMap[doctor.field] || `Field ${doctor.field}`;
+                  }
+                  
+                  // Get hospital details using the doctor's hospitalCode
+                  const hospitalCode = doctor.hospitalCode;
+                  if (hospitalCode) {
+                    try {
+                      console.log(`Getting hospital info for: ${hospitalCode}`);
+                      const hospitalResponse = await apiClient.get(`/hospital/${hospitalCode}`);
+                      
+                      if (hospitalResponse && hospitalResponse.data) {
+                        // Add hospital details to the appointment
+                        appointmentWithDetails.hospital = hospitalResponse.data;
+                        appointmentWithDetails.hospitalName = hospitalResponse.data.hospitalName;
+                      }
+                    } catch (err) {
+                      console.error(`Error fetching hospital details for code ${hospitalCode}:`, err);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error(`Error fetching doctor details for code ${doctorCode}:`, err);
+              }
             }
             
-            // Otherwise, try to fetch details for this appointment
-            const detailsResponse = await apiClient.get(`/appointment/${appointment.appointmentCode}`);
-            return {
-              ...appointment,
-              ...detailsResponse.data
-            };
+            console.log(`Enhanced appointment:`, appointmentWithDetails);
+            return appointmentWithDetails;
           } catch (error) {
             console.error(`Error fetching details for appointment ${appointment.appointmentCode}:`, error);
             return appointment;

@@ -149,11 +149,31 @@ const PatientProfile = () => {
     return <span className={`badge ${badgeClass}`}>{statusText}</span>;
   };
   
+  // Helper function to get field name from field code
+  const getFieldNameFromCode = (fieldCode) => {
+    if (!fieldCode) return null;
+    
+    const fieldNameMap = {
+      1: "Dahiliye",
+      2: "Çocuk Sağlığı ve Hastalıkları",
+      3: "Kulak Burun Boğaz Hastalıkları",
+      4: "Göz Hastalıkları",
+      5: "Kadın Hastalıkları ve Doğum",
+      6: "Ortopedi ve Travmatoloji",
+      7: "Genel Cerrahi",
+      8: "Deri ve Zührevi Hastalıkları",
+      9: "Nöroloji",
+      10: "Kardiyoloji"
+    };
+    
+    return fieldNameMap[fieldCode] || `Field ${fieldCode}`;
+  };
+  
   return (
     <div className="app-container">
       <div className="card">
         <div className="card-header">
-          <h1 className="page-title">Profilim</h1>
+          <h1 className="page-title">Randevularım</h1>
           {currentUser && (
             <div className="px-3 py-1 bg-blue-50 rounded-lg text-sm text-gray-700">
               <span className="font-semibold mr-1">Hesap:</span> 
@@ -239,8 +259,8 @@ const PatientProfile = () => {
                 <thead>
                   <tr>
                     <th>Doktor</th>
+                    <th>Hastane / Alan</th>
                     <th>Tarih & Saat</th>
-                    <th>Hastane</th>
                     <th>Durum</th>
                     {activeTab === 'upcoming' && <th className="text-right">İşlemler</th>}
                   </tr>
@@ -249,31 +269,54 @@ const PatientProfile = () => {
                   {displayAppointments.map((appointment) => (
                     <tr key={appointment.appointmentId || appointment.appointmentCode} className="hover:bg-gray-50">
                       <td>
-                        <div className="flex items-center">
+                        <div className="flex flex-col">
                           <div className="text-sm font-medium text-gray-900">
-                            Dr. {appointment.doctorFirstName || appointment.doctor?.firstName || ''}
-                            {' '}
-                            {appointment.doctorLastName || appointment.doctor?.lastName || ''}
+                            <i className="fas fa-user-md text-primary mr-1"></i>
+                            {appointment.doctorFirstName || appointment.doctor?.firstName || appointment.doctor?.doctorName || appointment.doctorName ? (
+                              <>
+                                Dr. {appointment.doctorFirstName || appointment.doctor?.firstName || ''}
+                                {' '}
+                                {appointment.doctorLastName || appointment.doctor?.lastName || ''}
+                              </>
+                            ) : (
+                              'Doktor bilgisi bulunamadı'
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {appointment.fieldName || appointment.doctor?.fieldName || ''}
+                        </div>
+                      </td>
+                      
+                      <td>
+                        <div className="flex flex-col">
+                          <div className="text-sm font-medium text-gray-900">
+                            <i className="fas fa-hospital text-gray-700 mr-1"></i>
+                            {appointment.hospitalName || appointment.hospital?.hospitalName || 'Belirtilmemiş'}
                           </div>
+                          
+                          {(appointment.fieldName || appointment.doctor?.fieldName || appointment.doctor?.field) && (
+                            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full inline-block mt-1 font-medium">
+                              <i className="fas fa-stethoscope mr-1"></i>
+                              {appointment.fieldName || appointment.doctor?.fieldName || getFieldNameFromCode(appointment.doctor?.field) || 'Genel'}
+                            </div>
+                          )}
+                          
+                          {(!appointment.fieldName && !appointment.doctor?.fieldName && !appointment.doctor?.field) && (
+                            <div className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full inline-block mt-1 font-medium">
+                              <i className="fas fa-stethoscope mr-1"></i>
+                              Belirtilmemiş
+                            </div>
+                          )}
                         </div>
                       </td>
                       
                       <td>
                         <div className="text-sm font-medium">
+                          <i className="far fa-calendar-alt text-gray-500 mr-1"></i>
                           {formatDate(appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date))}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 mt-1">
+                          <i className="far fa-clock text-gray-400 mr-1"></i>
                           {formatTime(appointment.startTime || (appointment.appointmentTime && appointment.appointmentTime.time))}
                           {appointment.endTime && ` - ${formatTime(appointment.endTime)}`}
-                        </div>
-                      </td>
-                      
-                      <td>
-                        <div className="text-sm">
-                          {appointment.hospitalName || appointment.hospital?.hospitalName || ''}
                         </div>
                       </td>
                       

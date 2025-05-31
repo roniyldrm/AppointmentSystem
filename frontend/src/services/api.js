@@ -145,4 +145,56 @@ apiClient.interceptors.response.use(
   }
 );
 
+// User Profile API
+export const getUserProfile = async (userCode) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/user/${userCode}/profile`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+};
+
+export const updateUserProfile = async (userCode, profileData) => {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.put(`${API_URL}/user/${userCode}/profile`, profileData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+// Change Password API
+export const changePassword = async (userCode, currentPassword, newPassword) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_URL}/user/${userCode}/password`, {
+      currentPassword,
+      newPassword
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+};
+
 export default apiClient; 

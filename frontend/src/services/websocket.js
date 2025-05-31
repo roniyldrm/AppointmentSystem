@@ -1,4 +1,4 @@
-import { WS_URL } from '../config/api';
+import { WS_URL_BASE, getWsUrl } from '../config/api';
 
 class WebSocketService {
   constructor() {
@@ -7,7 +7,9 @@ class WebSocketService {
       appointmentCreated: [],
       appointmentCancelled: [],
       appointmentStatusChanged: [],
-      notification: []
+      notification: [],
+      connect: [],
+      disconnect: []
     };
     this.reconnectInterval = null;
     this.isConnected = false;
@@ -15,33 +17,69 @@ class WebSocketService {
 
   connect() {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const userCode = localStorage.getItem('userId');
+    
+    if (!token || !userCode) {
+      console.error('WebSocket bağlantısı için token veya userCode eksik');
+      return;
+    }
 
     try {
-      this.socket = new WebSocket(`${WS_URL}?token=${token}`);
+      // Kullanıcı koduna göre WebSocket URL'si oluştur
+      const wsUrl = getWsUrl(userCode);
+      
+      if (!wsUrl) {
+        console.error('WebSocket URL oluşturulamadı');
+        return;
+      }
+      
+      console.log('WebSocket connecting to:', wsUrl);
+      this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
         console.log('WebSocket connected');
         this.isConnected = true;
         clearInterval(this.reconnectInterval);
+        
+        // Connect olayı için tüm işleyicileri çağır
+        if (this.handlers.connect) {
+          this.handlers.connect.forEach(handler => handler());
+        }
       };
 
       this.socket.onmessage = (event) => {
         try {
+          console.log('WebSocket mesajı alındı:', event.data);
           const data = JSON.parse(event.data);
-          const { type, payload } = data;
-
-          if (this.handlers[type]) {
-            this.handlers[type].forEach(handler => handler(payload));
+          console.log('Ayrıştırılmış veri:', data);
+          
+          // Mesaj tipi varsa o tip için handlers çağır
+          const type = data.type;
+          
+          if (type && this.handlers[type]) {
+            console.log(`'${type}' tipinde olay işleniyor`);
+            this.handlers[type].forEach(handler => handler(data));
+          } else {
+            // Bilinmeyen türdeki mesajlar için genel bildirim olarak işle
+            console.log('Bilinmeyen mesaj tipi, genel bildirim olarak işleniyor:', type);
+            if (this.handlers.notification) {
+              this.handlers.notification.forEach(handler => handler(data));
+            }
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('WebSocket mesajını işlerken hata:', error);
         }
       };
 
       this.socket.onclose = () => {
         console.log('WebSocket disconnected');
         this.isConnected = false;
+        
+        // Disconnect olayı için tüm işleyicileri çağır
+        if (this.handlers.disconnect) {
+          this.handlers.disconnect.forEach(handler => handler());
+        }
+        
         this.reconnect();
       };
 
@@ -81,6 +119,26 @@ class WebSocketService {
   off(eventType, handler) {
     if (this.handlers[eventType]) {
       this.handlers[eventType] = this.handlers[eventType].filter(h => h !== handler);
+    }
+  }
+
+  // Manuel olarak test bildirimi gönderme metodu
+  sendTestNotification() {
+    if (!this.isConnected) {
+      console.error('WebSocket bağlantısı kurulamadı, test bildirimi gönderilemiyor');
+      return;
+    }
+    
+    const testMessage = {
+      type: 'notification',
+      title: 'Test Bildirimi',
+      message: 'Bu bir test bildirimidir.',
+      timestamp: new Date().toISOString()
+    };
+    
+    // Bildirim işleyicilerini çağır
+    if (this.handlers.notification) {
+      this.handlers.notification.forEach(handler => handler(testMessage));
     }
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format, addDays, parseISO } from "date-fns";
+import { format, addDays, parseISO, isAfter } from "date-fns";
 import AppointmentService from "../services/appointment";
 import {
   Container,
@@ -23,19 +23,42 @@ const DoctorSchedule = () => {
   const [doctor, setDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [timeSlots, setTimeSlots] = useState([]);
+  const [doctorTimeInfo, setDoctorTimeInfo] = useState(null);
   const [expandedHours, setExpandedHours] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [dateRange, setDateRange] = useState({start: null, end: null});
   
-  // Calculate a week of dates from today
-  const dateOptions = Array.from({ length: 14 }, (_, i) => {
-    const date = addDays(new Date(), i);
-    return {
-      value: format(date, 'yyyy-MM-dd'),
-      label: format(date, 'EEEE, MMMM d, yyyy')
-    };
-  });
+  // Calculate date options based on date range or default to 7 days
+  const dateOptions = React.useMemo(() => {
+    const today = new Date();
+    const maxDays = 30; // Maximum days to show if no range selected
+    
+    // If we have a date range, use it to determine available dates
+    if (dateRange.start && dateRange.end) {
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      const dayDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+      
+      return Array.from({ length: dayDiff }, (_, i) => {
+        const date = addDays(startDate, i);
+        return {
+          value: format(date, 'yyyy-MM-dd'),
+          label: format(date, 'EEEE, d MMMM yyyy')
+        };
+      });
+    }
+    
+    // Default to showing 7 days starting from today
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(today, i);
+      return {
+        value: format(date, 'yyyy-MM-dd'),
+        label: format(date, 'EEEE, d MMMM yyyy')
+      };
+    });
+  }, [dateRange]);
   
   // Fetch doctor information on component mount
   useEffect(() => {
@@ -62,15 +85,26 @@ const DoctorSchedule = () => {
       
       try {
         setLoading(true);
+        setError(''); // Her yeni istek için hata mesajını temizle
         console.log(`Fetching time slots for doctor ${doctorId} on date ${selectedDate}`);
         const response = await AppointmentService.getDoctorTimeSlots(doctorId, selectedDate);
         console.log("Time slots response:", response.data);
         
-        if (Array.isArray(response.data)) {
+        // Handle new response format with doctorInfo
+        if (response.data && response.data.timeSlots) {
+          if (Array.isArray(response.data.timeSlots) && response.data.timeSlots.length === 0) {
+            // Eğer dizi boşsa, bu sorun değil - sadece slot yok
+            setTimeSlots([]);
+          } else {
+            setTimeSlots(response.data.timeSlots);
+          }
+          setDoctorTimeInfo(response.data.doctorInfo);
+        } else if (Array.isArray(response.data)) {
+          // Handle legacy response format
           setTimeSlots(response.data);
         } else {
-          console.error("Response is not an array:", response.data);
-          setError("Invalid time slots data received");
+          console.error("Invalid response format:", response.data);
+          setError("Uygun zaman dilimi bulunamadı. Lütfen başka bir tarih seçin.");
           setTimeSlots([]);
         }
         
@@ -78,7 +112,7 @@ const DoctorSchedule = () => {
         setExpandedHours([]);
         setSelectedSlot(null);
       } catch (err) {
-        setError('Failed to load available time slots. Please try again later.');
+        setError('Zaman dilimlerini yüklerken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
         console.error('Error fetching time slots:', err);
         setTimeSlots([]);
       } finally {
@@ -186,10 +220,10 @@ const DoctorSchedule = () => {
           onClick={() => navigate(-1)}
           className="mb-4 text-blue-600 hover:text-blue-800 flex items-center"
         >
-          ← Back to Doctor Search
+          ← Doktor Aramasına Geri Dön
         </button>
         
-        <h1 className="text-2xl font-bold text-blue-600 mb-6">Schedule an Appointment</h1>
+        <h1 className="text-2xl font-bold text-blue-600 mb-6">Randevu Al</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -205,14 +239,22 @@ const DoctorSchedule = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Dr. {doctor.firstName} {doctor.lastName}</h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {doctorTimeInfo && doctorTimeInfo.doctorName 
+                    ? `Dr. ${doctorTimeInfo.doctorName}` 
+                    : doctor.firstName && doctor.lastName 
+                      ? `Dr. ${doctor.firstName} ${doctor.lastName}`
+                      : doctor.doctorName 
+                        ? `Dr. ${doctor.doctorName}`
+                        : "Doktor"}
+                </h2>
                 <p className="text-gray-600">{doctor.fieldName}</p>
                 <p className="text-gray-600">{doctor.hospitalName}</p>
               </div>
               
               <div className="mt-4 md:mt-0">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="appointmentDate">
-                  Select Date
+                  Tarih Seç
                 </label>
                 <select
                   id="appointmentDate"
@@ -236,12 +278,12 @@ const DoctorSchedule = () => {
               </div>
             ) : timeSlots.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-700 text-lg">No available time slots for this date.</p>
-                <p className="text-gray-600 mt-2">Please select another date or try a different doctor.</p>
+                <p className="text-gray-700 text-lg">Bu tarih için müsait saat bulunamadı.</p>
+                <p className="text-gray-600 mt-2">Lütfen başka bir tarih seçin veya farklı bir doktor deneyin.</p>
               </div>
             ) : (
               <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Available Time Slots</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Müsait Saatler</h3>
                 
                 <div className="space-y-4">
                   {Object.entries(getHourlySlots()).map(([hour, slots]) => (
@@ -262,8 +304,8 @@ const DoctorSchedule = () => {
                                 selectedSlot && selectedSlot.slotId === slot.slotId
                                   ? 'bg-blue-600 text-white border-blue-600'
                                   : slot.available
-                                  ? 'bg-white text-gray-800 border-gray-300 hover:bg-blue-50'
-                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                  ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600'
+                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'
                               }`}
                               onClick={() => slot.available && handleSlotSelect(slot)}
                               disabled={!slot.available || loading}
@@ -283,7 +325,7 @@ const DoctorSchedule = () => {
                     onClick={handleBookAppointment}
                     disabled={!selectedSlot || loading}
                   >
-                    {loading ? 'Booking...' : 'Book Appointment'}
+                    {loading ? 'Randevu Alınıyor...' : 'Randevu Al'}
                   </button>
                 </div>
               </div>
@@ -291,7 +333,7 @@ const DoctorSchedule = () => {
           </div>
         ) : (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            Doctor not found. Please go back and try again.
+            Doktor bulunamadı. Lütfen geri dönüp tekrar deneyin.
           </div>
         )}
       </Paper>

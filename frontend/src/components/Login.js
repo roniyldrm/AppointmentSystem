@@ -129,9 +129,12 @@ const Login = () => {
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </button>
           </div>
-          <div className="text-center mt-4">
-            <Link to="/register" className="text-blue-600 hover:text-blue-800 text-sm">
+          <div className="text-center mt-4 space-y-2">
+            <Link to="/register" className="block text-blue-600 hover:text-blue-800 text-sm">
               Hesabınız yok mu? Buradan kayıt olun
+            </Link>
+            <Link to="/admin/login" className="block text-red-600 hover:text-red-800 text-sm font-medium">
+              Admin Girişi
             </Link>
           </div>
         </form>

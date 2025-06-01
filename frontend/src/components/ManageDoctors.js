@@ -20,6 +20,15 @@ const ManageDoctors = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   useEffect(() => {
+    // Check authentication on load
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("No authentication token found");
+      setError("Authentication required. Please log in again.");
+      return;
+    }
+    
+    console.log("ManageDoctors: Component mounted, fetching initial data...");
     fetchDoctors();
     fetchFields();
     fetchHospitals();
@@ -28,17 +37,39 @@ const ManageDoctors = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await AdminService.getAllDoctors({
-        page,
-        limit: 10,
-        ...filter
-      });
+      setError(''); // Clear previous errors
       
-      setDoctors(response.data.doctors);
-      setTotalPages(response.data.totalPages || 1);
-    } catch (err) {
-      setError('Failed to load doctors. Please try again later.');
-      console.error('Error fetching doctors:', err);
+      // Check if token exists
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token available for fetching doctors");
+        setError("Authentication required. Please log in again.");
+        return;
+      }
+      
+      console.log("Fetching doctors with filter:", filter);
+      const response = await AdminService.getDoctors(filter);
+      console.log("Doctors response:", response);
+      
+      if (Array.isArray(response)) {
+        setDoctors(response);
+        console.log("Successfully loaded", response.length, "doctors");
+      } else {
+        console.error("Invalid response format:", response);
+        setDoctors([]);
+        setError("Received invalid data from server");
+      }
+      
+      setTotalPages(response.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      if (error.response?.status === 401) {
+        console.warn("Authentication error (401)");
+        setError("Authentication failed. Please log in again.");
+      } else {
+        setError('Failed to load doctors. Please try again later.');
+      }
+      setDoctors([]); // Ensure it's always an array
     } finally {
       setLoading(false);
     }
@@ -46,19 +77,34 @@ const ManageDoctors = () => {
   
   const fetchFields = async () => {
     try {
+      console.log("Fetching fields...");
       const response = await AdminService.getFields();
-      setFields(response.data);
-    } catch (err) {
-      console.error('Error fetching fields:', err);
+      console.log("Fields response:", response);
+      
+      if (Array.isArray(response)) {
+        setFields(response);
+        console.log("Successfully loaded", response.length, "fields");
+      } else {
+        console.error("Invalid fields response format:", response);
+        setFields([]);
+      }
+    } catch (error) {
+      console.error('Error fetching fields:', error);
+      if (error.response?.status === 401) {
+        console.warn("Authentication error (401) while fetching fields");
+        setError("Authentication failed. Please log in again.");
+      }
+      setFields([]); // Ensure it's always an array
     }
   };
   
   const fetchHospitals = async () => {
     try {
       const response = await AdminService.getHospitals();
-      setHospitals(response.data);
-    } catch (err) {
-      console.error('Error fetching hospitals:', err);
+      setHospitals(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error('Error fetching hospitals:', error);
+      setHospitals([]); // Ensure it's always an array
     }
   };
   
@@ -97,11 +143,11 @@ const ManageDoctors = () => {
     e.preventDefault();
     
     try {
-      await AdminService.updateDoctor(activeDoctor.id, activeDoctor);
+      await AdminService.updateDoctor(activeDoctor.doctorCode, activeDoctor);
       
       // Update local state
       setDoctors(doctors.map(doc => 
-        doc.id === activeDoctor.id ? activeDoctor : doc
+        doc.doctorCode === activeDoctor.doctorCode ? activeDoctor : doc
       ));
       
       handleCloseModal();
@@ -111,16 +157,16 @@ const ManageDoctors = () => {
     }
   };
   
-  const handleDeleteDoctor = async (doctorId) => {
+  const handleDeleteDoctor = async (doctorCode) => {
     if (!window.confirm('Are you sure you want to delete this doctor? This action cannot be undone.')) {
       return;
     }
     
     try {
-      await AdminService.deleteDoctor(doctorId);
+      await AdminService.deleteDoctor(doctorCode);
       
       // Remove from local state
-      setDoctors(doctors.filter(doc => doc.id !== doctorId));
+      setDoctors(doctors.filter(doc => doc.doctorCode !== doctorCode));
     } catch (err) {
       setError('Failed to delete doctor. Please try again.');
       console.error('Error deleting doctor:', err);
@@ -129,8 +175,7 @@ const ManageDoctors = () => {
   
   const handleCreateDoctor = () => {
     setActiveDoctor({
-      firstName: '',
-      lastName: '',
+      doctorName: '',
       email: '',
       phone: '',
       fieldCode: '',
@@ -151,7 +196,7 @@ const ManageDoctors = () => {
       const response = await AdminService.createDoctor(activeDoctor);
       
       // Add to local state
-      setDoctors([...doctors, response.data]);
+      setDoctors([...doctors, response]);
       
       handleCloseCreateModal();
     } catch (err) {
@@ -188,7 +233,7 @@ const ManageDoctors = () => {
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
                 <option value="">All Specialties</option>
-                {fields.map(field => (
+                {Array.isArray(fields) && fields.map(field => (
                   <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
                 ))}
               </select>
@@ -206,7 +251,7 @@ const ManageDoctors = () => {
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
                 <option value="">All Hospitals</option>
-                {hospitals.map(hospital => (
+                {Array.isArray(hospitals) && hospitals.map(hospital => (
                   <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                 ))}
               </select>
@@ -289,10 +334,10 @@ const ManageDoctors = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {doctors.map((doctor) => (
-                      <tr key={doctor.id}>
+                      <tr key={doctor.doctorCode}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            Dr. {doctor.firstName} {doctor.lastName}
+                            Dr. {doctor.doctorName || `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim()}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -317,7 +362,7 @@ const ManageDoctors = () => {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteDoctor(doctor.id)}
+                            onClick={() => handleDeleteDoctor(doctor.doctorCode)}
                             className="text-red-600 hover:text-red-900"
                           >
                             Delete
@@ -368,34 +413,19 @@ const ManageDoctors = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Doctor</h3>
               
               <form onSubmit={handleUpdateDoctor}>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="firstName">
-                      First Name
-                    </label>
-                    <input
-                      id="firstName"
-                      type="text"
-                      value={activeDoctor.firstName}
-                      onChange={(e) => setActiveDoctor({...activeDoctor, firstName: e.target.value})}
-                      className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lastName">
-                      Last Name
-                    </label>
-                    <input
-                      id="lastName"
-                      type="text"
-                      value={activeDoctor.lastName}
-                      onChange={(e) => setActiveDoctor({...activeDoctor, lastName: e.target.value})}
-                      className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      required
-                    />
-                  </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="doctorName">
+                    Doctor Name*
+                  </label>
+                  <input
+                    id="doctorName"
+                    type="text"
+                    value={activeDoctor.doctorName || ''}
+                    onChange={(e) => setActiveDoctor({...activeDoctor, doctorName: e.target.value})}
+                    className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="Dr. John Doe"
+                    required
+                  />
                 </div>
                 
                 <div className="mb-4">
@@ -436,7 +466,7 @@ const ManageDoctors = () => {
                     required
                   >
                     <option value="">Select Specialty</option>
-                    {fields.map(field => (
+                    {Array.isArray(fields) && fields.map(field => (
                       <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
                     ))}
                   </select>
@@ -454,7 +484,7 @@ const ManageDoctors = () => {
                     required
                   >
                     <option value="">Select Hospital</option>
-                    {hospitals.map(hospital => (
+                    {Array.isArray(hospitals) && hospitals.map(hospital => (
                       <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                     ))}
                   </select>
@@ -489,34 +519,19 @@ const ManageDoctors = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Doctor</h3>
               
               <form onSubmit={handleSubmitCreate}>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newFirstName">
-                      First Name*
-                    </label>
-                    <input
-                      id="newFirstName"
-                      type="text"
-                      value={activeDoctor.firstName}
-                      onChange={(e) => setActiveDoctor({...activeDoctor, firstName: e.target.value})}
-                      className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newLastName">
-                      Last Name*
-                    </label>
-                    <input
-                      id="newLastName"
-                      type="text"
-                      value={activeDoctor.lastName}
-                      onChange={(e) => setActiveDoctor({...activeDoctor, lastName: e.target.value})}
-                      className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      required
-                    />
-                  </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newDoctorName">
+                    Doctor Name*
+                  </label>
+                  <input
+                    id="newDoctorName"
+                    type="text"
+                    value={activeDoctor.doctorName || ''}
+                    onChange={(e) => setActiveDoctor({...activeDoctor, doctorName: e.target.value})}
+                    className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="Dr. John Doe"
+                    required
+                  />
                 </div>
                 
                 <div className="mb-4">
@@ -557,7 +572,7 @@ const ManageDoctors = () => {
                     required
                   >
                     <option value="">Select Specialty</option>
-                    {fields.map(field => (
+                    {Array.isArray(fields) && fields.map(field => (
                       <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
                     ))}
                   </select>
@@ -575,7 +590,7 @@ const ManageDoctors = () => {
                     required
                   >
                     <option value="">Select Hospital</option>
-                    {hospitals.map(hospital => (
+                    {Array.isArray(hospitals) && hospitals.map(hospital => (
                       <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                     ))}
                   </select>

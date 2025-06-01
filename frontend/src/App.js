@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './components/Home';
 import Login from './components/Login';
 import Register from './components/Register';
+import AdminLogin from './components/AdminLogin';
 import Unauthorized from './components/Unauthorized';
 
 // Patient components
@@ -156,6 +157,7 @@ const AppContent = () => {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
           
           {/* Patient routes */}

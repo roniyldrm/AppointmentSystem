@@ -20,6 +20,15 @@ const ManageHospitals = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   useEffect(() => {
+    // Check authentication on load
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("No authentication token found");
+      setError("Authentication required. Please log in again.");
+      return;
+    }
+    
+    console.log("ManageHospitals: Component mounted, fetching initial data...");
     fetchHospitals();
     fetchCities();
   }, [page]);
@@ -27,17 +36,39 @@ const ManageHospitals = () => {
   const fetchHospitals = async () => {
     try {
       setLoading(true);
-      const response = await AdminService.getAllHospitals({
-        page,
-        limit: 10,
-        ...filter
-      });
+      setError(''); // Clear previous errors
       
-      setHospitals(response.data.hospitals);
-      setTotalPages(response.data.totalPages || 1);
-    } catch (err) {
-      setError('Failed to load hospitals. Please try again later.');
-      console.error('Error fetching hospitals:', err);
+      // Check if token exists
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token available for fetching hospitals");
+        setError("Authentication required. Please log in again.");
+        return;
+      }
+      
+      console.log("Fetching hospitals with filter:", filter);
+      const response = await AdminService.getHospitals(filter);
+      console.log("Hospitals response:", response);
+      
+      if (Array.isArray(response)) {
+        setHospitals(response);
+        console.log("Successfully loaded", response.length, "hospitals");
+      } else {
+        console.error("Invalid response format:", response);
+        setHospitals([]);
+        setError("Received invalid data from server");
+      }
+      
+      setTotalPages(response.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching hospitals:', error);
+      if (error.response?.status === 401) {
+        console.warn("Authentication error (401)");
+        setError("Authentication failed. Please log in again.");
+      } else {
+        setError('Failed to load hospitals. Please try again later.');
+      }
+      setHospitals([]); // Ensure it's always an array
     } finally {
       setLoading(false);
     }
@@ -45,11 +76,24 @@ const ManageHospitals = () => {
   
   const fetchCities = async () => {
     try {
+      console.log("Fetching cities...");
       const response = await AdminService.getCities();
-      console.log("Cities response:", response.data);
-      setCities(response.data);
+      console.log("Cities response:", response);
+      
+      if (Array.isArray(response)) {
+        setCities(response);
+        console.log("Successfully loaded", response.length, "cities");
+      } else {
+        console.error("Invalid cities response format:", response);
+        setCities([]);
+      }
     } catch (err) {
       console.error('Error fetching cities:', err);
+      if (err.response?.status === 401) {
+        console.warn("Authentication error (401) while fetching cities");
+        setError("Authentication failed. Please log in again.");
+      }
+      setCities([]); // Ensure it's always an array
     }
   };
   
@@ -61,9 +105,10 @@ const ManageHospitals = () => {
     
     try {
       const response = await AdminService.getDistricts(provinceCode);
-      setDistricts(response.data);
+      setDistricts(Array.isArray(response) ? response : []);
     } catch (err) {
       console.error('Error fetching districts:', err);
+      setDistricts([]); // Ensure it's always an array
     }
   };
   
@@ -206,7 +251,7 @@ const ManageHospitals = () => {
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
                 <option value="">All Cities</option>
-                {cities.map(city => (
+                {Array.isArray(cities) && cities.map(city => (
                   <option key={city.code} value={city.code}>{city.name}</option>
                 ))}
               </select>
@@ -225,7 +270,7 @@ const ManageHospitals = () => {
                 disabled={!filter.provinceCode}
               >
                 <option value="">All Districts</option>
-                {districts.map(district => (
+                {Array.isArray(districts) && districts.map(district => (
                   <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                 ))}
               </select>
@@ -434,7 +479,7 @@ const ManageHospitals = () => {
                       required
                     >
                       <option value="">Select City</option>
-                      {cities.map(city => (
+                      {Array.isArray(cities) && cities.map(city => (
                         <option key={city.code} value={city.code}>{city.name}</option>
                       ))}
                     </select>
@@ -452,7 +497,7 @@ const ManageHospitals = () => {
                       disabled={!activeHospital.provinceCode}
                     >
                       <option value="">Select District</option>
-                      {districts.map(district => (
+                      {Array.isArray(districts) && districts.map(district => (
                         <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                       ))}
                     </select>
@@ -558,7 +603,7 @@ const ManageHospitals = () => {
                       required
                     >
                       <option value="">Select City</option>
-                      {cities.map(city => (
+                      {Array.isArray(cities) && cities.map(city => (
                         <option key={city.code} value={city.code}>{city.name}</option>
                       ))}
                     </select>
@@ -576,7 +621,7 @@ const ManageHospitals = () => {
                       disabled={!activeHospital.provinceCode}
                     >
                       <option value="">Select District</option>
-                      {districts.map(district => (
+                      {Array.isArray(districts) && districts.map(district => (
                         <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                       ))}
                     </select>

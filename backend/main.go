@@ -59,6 +59,7 @@ func main() {
 	mux.HandleFunc("/api/auth/register", handleRegisterUser).Methods("POST")
 	mux.HandleFunc("/api/auth/login", handleLoginUser).Methods("POST")
 	mux.HandleFunc("/api/auth/refresh", handleRefreshToken).Methods("POST")
+	mux.HandleFunc("/api/admin/create", handleCreateAdminUser).Methods("POST")
 
 	// Protected routes
 	protected := mux.PathPrefix("/api").Subrouter()
@@ -100,6 +101,7 @@ func main() {
 	adminRoutes := mux.PathPrefix("/api").Subrouter()
 	adminRoutes.Use(middleware.JWTMiddleware)
 	adminRoutes.Use(middleware.RoleMiddleware("admin"))
+	adminRoutes.HandleFunc("/admin/stats", handleGetDashboardStats).Methods("GET")
 	adminRoutes.HandleFunc("/users", handleGetAllUsers).Methods("GET")
 	adminRoutes.HandleFunc("/user/{userCode}", handleDeleteUser).Methods("DELETE")
 	adminRoutes.HandleFunc("/hospital", handleCreateHospital).Methods("POST")
@@ -412,9 +414,19 @@ func handleGetFieldsByDistrict(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCreateDoctor(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var doctor api.Doctor
-	json.NewDecoder(r.Body).Decode(&doctor)
+	if err := json.NewDecoder(r.Body).Decode(&doctor); err != nil {
+		http.Error(w, "Error parsing doctor data: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	api.CreateDoctor(client, doctor)
+
+	// Return the created doctor
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(doctor)
 }
 
 func handleGetAllDoctors(w http.ResponseWriter, r *http.Request) {
@@ -453,15 +465,31 @@ func handleGetDoctorsByHospitalCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteDoctor(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	doctorCode := mux.Vars(r)["doctorCode"]
 
 	api.DeleteDoctor(client, doctorCode)
+
+	// Return success message
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Doctor deleted successfully",
+	})
 }
 
 func handleUpdateDoctor(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var doctor api.Doctor
-	json.NewDecoder(r.Body).Decode(&doctor)
+	if err := json.NewDecoder(r.Body).Decode(&doctor); err != nil {
+		http.Error(w, "Error parsing doctor data: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	api.UpdateDoctor(client, doctor)
+
+	// Return the updated doctor
+	json.NewEncoder(w).Encode(doctor)
 }
 
 func handleCreateAppointment(w http.ResponseWriter, r *http.Request) {
@@ -990,4 +1018,47 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleGetDashboardStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	stats, err := api.GetDashboardStats(client)
+	if err != nil {
+		http.Error(w, "Failed to get dashboard stats: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": stats,
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleCreateAdminUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var adminData api.AdminUser
+	if err := json.NewDecoder(r.Body).Decode(&adminData); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if adminData.Email == "" || adminData.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	err := api.CreateAdminUser(client, adminData)
+	if err != nil {
+		http.Error(w, "Failed to create admin user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Admin user created successfully",
+	})
 }

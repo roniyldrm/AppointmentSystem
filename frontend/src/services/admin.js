@@ -205,6 +205,143 @@ const AdminService = {
   },
 
   // Appointment Management
+  getAllAppointments: async (limit = 10) => {
+    try {
+      // Get basic appointments
+      const response = await apiClient.get('/appointments');
+      let appointments = response.data;
+
+      // Sort by creation date (newest first)
+      appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Apply limit
+      if (limit > 0) {
+        appointments = appointments.slice(0, limit);
+      }
+
+      // Enhance appointments with user and doctor details
+      const enhancedAppointments = await Promise.all(
+        appointments.map(async (appointment) => {
+          try {
+            // Get user details
+            let patientFirstName = 'Unknown';
+            let patientLastName = '';
+            let patientEmail = '';
+            
+            try {
+              const userResponse = await apiClient.get(`/user/${appointment.userCode}`);
+              const user = userResponse.data;
+              patientFirstName = user.userCode; // Using userCode as name for now
+              patientEmail = user.email || '';
+            } catch (error) {
+              console.warn(`Failed to get user details for ${appointment.userCode}:`, error);
+            }
+
+            // Get doctor details
+            let doctorFirstName = 'Unknown';
+            let doctorLastName = '';
+            let doctorName = 'Unknown Doctor';
+            let hospitalName = 'Unknown Hospital';
+            let fieldName = 'Unknown';
+
+            try {
+              const doctorResponse = await apiClient.get(`/doctor/${appointment.doctorCode}`);
+              const doctor = doctorResponse.data;
+              doctorName = doctor.doctorName || 'Unknown Doctor';
+              doctorFirstName = doctor.doctorName || 'Unknown';
+              
+              // Map field codes to names
+              const fieldMapping = {
+                0: 'Genel Tıp',
+                1: 'Kardiyoloji',
+                2: 'Nöroloji',
+                3: 'Ortopedi',
+                4: 'Pediatri',
+                5: 'Dermatoloji',
+                6: 'Göz Hastalıkları',
+                7: 'Kulak Burun Boğaz',
+                8: 'Üroloji',
+                9: 'Jinekologi'
+              };
+              fieldName = fieldMapping[doctor.fieldCode] || 'Unknown';
+
+              // Get hospital details
+              try {
+                const hospitalResponse = await apiClient.get(`/hospital/${doctor.hospitalCode}`);
+                hospitalName = hospitalResponse.data.hospitalName || 'Unknown Hospital';
+              } catch (error) {
+                console.warn(`Failed to get hospital details for ${doctor.hospitalCode}:`, error);
+              }
+            } catch (error) {
+              console.warn(`Failed to get doctor details for ${appointment.doctorCode}:`, error);
+            }
+
+            // Calculate end time (15 minutes after start time)
+            let endTime = '';
+            if (appointment.appointmentTime.time) {
+              try {
+                const [hours, minutes] = appointment.appointmentTime.time.split(':').map(Number);
+                const startDate = new Date();
+                startDate.setHours(hours, minutes, 0, 0);
+                const endDate = new Date(startDate.getTime() + 15 * 60000); // Add 15 minutes
+                endTime = endDate.toTimeString().slice(0, 5); // Format as HH:MM
+              } catch (error) {
+                console.warn('Failed to calculate end time:', error);
+              }
+            }
+
+            return {
+              appointmentId: appointment.appointmentCode,
+              appointmentCode: appointment.appointmentCode,
+              date: appointment.appointmentTime.date || '',
+              startTime: appointment.appointmentTime.time || '',
+              endTime: endTime,
+              patientFirstName: patientFirstName,
+              patientLastName: patientLastName,
+              patientEmail: patientEmail,
+              doctorFirstName: doctorFirstName,
+              doctorLastName: doctorLastName,
+              doctorName: doctorName,
+              hospitalName: hospitalName,
+              fieldName: fieldName,
+              status: 'SCHEDULED',
+              cancelRequested: false,
+              createdAt: appointment.createdAt,
+              updatedAt: appointment.updatedAt
+            };
+          } catch (error) {
+            console.error('Error enhancing appointment:', error);
+            // Return basic appointment data if enhancement fails
+            return {
+              appointmentId: appointment.appointmentCode,
+              appointmentCode: appointment.appointmentCode,
+              date: appointment.appointmentTime.date || '',
+              startTime: appointment.appointmentTime.time || '',
+              endTime: '',
+              patientFirstName: 'Unknown',
+              patientLastName: '',
+              patientEmail: '',
+              doctorFirstName: 'Unknown',
+              doctorLastName: '',
+              doctorName: 'Unknown Doctor',
+              hospitalName: 'Unknown Hospital',
+              fieldName: 'Unknown',
+              status: 'SCHEDULED',
+              cancelRequested: false,
+              createdAt: appointment.createdAt,
+              updatedAt: appointment.updatedAt
+            };
+          }
+        })
+      );
+
+      return enhancedAppointments;
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      throw error;
+    }
+  },
+
   getAppointments: async (params = {}) => {
     const { page = 1, limit = 10, status, doctorCode, userCode, startDate, endDate } = params;
     let url = `/appointments?page=${page}&limit=${limit}`;

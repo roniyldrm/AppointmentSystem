@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -34,6 +35,27 @@ type AppointmentDetails struct {
 	Doctor          Doctor          `json:"doctor"`
 	User            User            `json:"user"`
 	Hospital        Hospital        `json:"hospital"`
+}
+
+// Enhanced appointment structure for admin dashboard
+type EnhancedAppointment struct {
+	AppointmentId    string    `json:"appointmentId"`
+	AppointmentCode  string    `json:"appointmentCode"`
+	Date             string    `json:"date"`
+	StartTime        string    `json:"startTime"`
+	EndTime          string    `json:"endTime"`
+	PatientFirstName string    `json:"patientFirstName"`
+	PatientLastName  string    `json:"patientLastName"`
+	PatientEmail     string    `json:"patientEmail"`
+	DoctorFirstName  string    `json:"doctorFirstName"`
+	DoctorLastName   string    `json:"doctorLastName"`
+	DoctorName       string    `json:"doctorName"`
+	HospitalName     string    `json:"hospitalName"`
+	FieldName        string    `json:"fieldName"`
+	Status           string    `json:"status"`
+	CancelRequested  bool      `json:"cancelRequested"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
 var calendarService *google.GoogleCalendarService
@@ -245,6 +267,102 @@ func GetAllAppointments(client *mongo.Client) []Appointment {
 	cursor.All(context.TODO(), &appointments)
 
 	return appointments
+}
+
+func GetAllAppointmentsEnhanced(client *mongo.Client, limit int) []EnhancedAppointment {
+	log.Printf("GetAllAppointmentsEnhanced called with limit: %d", limit)
+
+	appointments := GetAllAppointments(client)
+	log.Printf("Found %d appointments", len(appointments))
+
+	// Sort by creation date (newest first) and limit
+	sort.Slice(appointments, func(i, j int) bool {
+		return appointments[i].CreatedAt.After(appointments[j].CreatedAt)
+	})
+
+	if limit > 0 && len(appointments) > limit {
+		appointments = appointments[:limit]
+		log.Printf("Limited to %d appointments", limit)
+	}
+
+	var enhancedAppointments []EnhancedAppointment
+
+	// Field mapping for specialties
+	fieldMapping := map[int]string{
+		0: "Genel Tıp",
+		1: "Kardiyoloji",
+		2: "Nöroloji",
+		3: "Ortopedi",
+		4: "Pediatri",
+		5: "Dermatoloji",
+		6: "Göz Hastalıkları",
+		7: "Kulak Burun Boğaz",
+		8: "Üroloji",
+		9: "Jinekologi",
+	}
+
+	for i, appointment := range appointments {
+		log.Printf("Processing appointment %d: %s", i, appointment.AppointmentCode)
+
+		enhanced := EnhancedAppointment{
+			AppointmentId:   appointment.AppointmentCode, // Use appointmentCode as ID
+			AppointmentCode: appointment.AppointmentCode,
+			Date:            appointment.AppointmentTime.Date,
+			StartTime:       appointment.AppointmentTime.Time,
+			EndTime:         "",          // Will calculate if needed
+			Status:          "SCHEDULED", // Default status
+			CancelRequested: false,       // Default value
+			CreatedAt:       appointment.CreatedAt,
+			UpdatedAt:       appointment.UpdatedAt,
+		}
+
+		// Calculate end time (15 minutes after start time)
+		if startTime, err := time.Parse("15:04", appointment.AppointmentTime.Time); err == nil {
+			endTime := startTime.Add(15 * time.Minute)
+			enhanced.EndTime = endTime.Format("15:04")
+		}
+
+		// Get user details
+		if user, err := GetUser(client, appointment.UserCode); err == nil {
+			// Split userCode or use email as name fallback
+			enhanced.PatientFirstName = user.UserCode // Using userCode as first name for now
+			enhanced.PatientLastName = ""
+			enhanced.PatientEmail = user.Email
+			log.Printf("Found user: %s", user.UserCode)
+		} else {
+			log.Printf("Error getting user %s: %v", appointment.UserCode, err)
+		}
+
+		// Get doctor details
+		if doctor, err := GetDoctor(client, appointment.DoctorCode); err == nil {
+			enhanced.DoctorName = doctor.DoctorName
+			enhanced.DoctorFirstName = doctor.DoctorName // Using full name as first name
+			enhanced.DoctorLastName = ""
+
+			// Get field name
+			if fieldName, exists := fieldMapping[doctor.FieldCode]; exists {
+				enhanced.FieldName = fieldName
+			} else {
+				enhanced.FieldName = "Unknown"
+			}
+			log.Printf("Found doctor: %s, field: %s", doctor.DoctorName, enhanced.FieldName)
+
+			// Get hospital details
+			if hospital, err := GetHospital(client, doctor.HospitalCode); err == nil {
+				enhanced.HospitalName = hospital.HospitalName
+				log.Printf("Found hospital: %s", hospital.HospitalName)
+			} else {
+				log.Printf("Error getting hospital %d: %v", doctor.HospitalCode, err)
+			}
+		} else {
+			log.Printf("Error getting doctor %s: %v", appointment.DoctorCode, err)
+		}
+
+		enhancedAppointments = append(enhancedAppointments, enhanced)
+	}
+
+	log.Printf("Returning %d enhanced appointments", len(enhancedAppointments))
+	return enhancedAppointments
 }
 
 func GetAppointment(client *mongo.Client, appointmentCode string) (*Appointment, error) {

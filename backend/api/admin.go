@@ -37,7 +37,7 @@ func GetDashboardStats(client *mongo.Client) (AdminStats, error) {
 	var stats AdminStats
 
 	// Get total appointments
-	appointmentsCollection := client.Database("appointments").Collection("appointments")
+	appointmentsCollection := client.Database("healthcare").Collection("appointments")
 	totalAppointments, err := appointmentsCollection.CountDocuments(context.TODO(), bson.D{})
 	if err != nil {
 		return stats, err
@@ -54,7 +54,7 @@ func GetDashboardStats(client *mongo.Client) (AdminStats, error) {
 	stats.TodayAppointments = int(todayAppointments)
 
 	// Get total doctors
-	doctorsCollection := client.Database("doctors").Collection("doctors")
+	doctorsCollection := client.Database("healthcare").Collection("doctors")
 	totalDoctors, err := doctorsCollection.CountDocuments(context.TODO(), bson.D{})
 	if err != nil {
 		return stats, err
@@ -62,7 +62,7 @@ func GetDashboardStats(client *mongo.Client) (AdminStats, error) {
 	stats.TotalDoctors = int(totalDoctors)
 
 	// Get total hospitals
-	hospitalsCollection := client.Database("hospitals").Collection("hospitals")
+	hospitalsCollection := client.Database("healthcare").Collection("hospitals")
 	totalHospitals, err := hospitalsCollection.CountDocuments(context.TODO(), bson.D{})
 	if err != nil {
 		return stats, err
@@ -79,7 +79,7 @@ func GetDashboardStats(client *mongo.Client) (AdminStats, error) {
 	stats.TotalPatients = int(totalPatients)
 
 	// Get cancel requests
-	requestsCollection := client.Database("requests").Collection("appointmentDeleteRequests")
+	requestsCollection := client.Database("healthcare").Collection("requests")
 	pendingFilter := bson.D{{Key: "status", Value: "pending"}}
 	cancelRequests, err := requestsCollection.CountDocuments(context.TODO(), pendingFilter)
 	if err != nil {

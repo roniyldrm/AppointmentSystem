@@ -110,6 +110,12 @@ func main() {
 	adminRoutes.HandleFunc("/doctor", handleCreateDoctor).Methods("POST")
 	adminRoutes.HandleFunc("/doctor", handleUpdateDoctor).Methods("PUT")
 	adminRoutes.HandleFunc("/doctor/{doctorCode}", handleDeleteDoctor).Methods("DELETE")
+	adminRoutes.HandleFunc("/appointments/enhanced", handleGetAllAppointmentsEnhanced).Methods("GET")
+	adminRoutes.HandleFunc("/appointments/test", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("=== TEST ROUTE CALLED ===")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "test route works"})
+	}).Methods("GET")
 	adminRoutes.HandleFunc("/appointments", handleGetAllAppointments).Methods("GET")
 	adminRoutes.HandleFunc("/appointment", handleUpdateAppointment).Methods("PUT")
 	adminRoutes.HandleFunc("/appointment/cancelRequests", handleGetAllAppointmentCancelRequests).Methods("GET")
@@ -661,6 +667,44 @@ func handleGetAllAppointments(w http.ResponseWriter, r *http.Request) {
 	appointments := api.GetAllAppointments(client)
 	if err := json.NewEncoder(w).Encode(appointments); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleGetAllAppointmentsEnhanced(w http.ResponseWriter, r *http.Request) {
+	log.Println("=== ENHANCED HANDLER CALLED ===")
+	w.Header().Set("Content-Type", "application/json")
+
+	log.Println("handleGetAllAppointmentsEnhanced called")
+
+	// Get limit parameter from query string
+	limitStr := r.URL.Query().Get("limit")
+	limit := 0
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil {
+			limit = parsedLimit
+		}
+	}
+
+	log.Printf("Limit parameter: %s, parsed limit: %d", limitStr, limit)
+
+	// Test response first
+	testResponse := []map[string]interface{}{
+		{
+			"appointmentId":    "test123",
+			"patientFirstName": "Test Patient",
+			"doctorFirstName":  "Test Doctor",
+			"date":             "2025-06-01",
+			"startTime":        "10:00",
+		},
+	}
+
+	log.Printf("Sending test response with %d items", len(testResponse))
+
+	if err := json.NewEncoder(w).Encode(testResponse); err != nil {
+		log.Printf("Error encoding test response: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		log.Println("Successfully encoded and sent test response")
 	}
 }
 

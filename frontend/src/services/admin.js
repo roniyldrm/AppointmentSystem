@@ -79,7 +79,7 @@ const AdminService = {
 
   // Doctor Management
   getDoctors: async (params = {}) => {
-    const { page = 1, limit = 50, hospitalCode, field, search } = params;
+    const { page = 1, limit = 50, hospitalCode, field, fieldCode, search } = params;
     
     let doctors;
     if (hospitalCode) {
@@ -102,7 +102,7 @@ const AdminService = {
     }
     
     // Enhance doctors with field names and hospital names
-    const enhancedDoctors = doctors.map((doctor) => {
+    let enhancedDoctors = doctors.map((doctor) => {
       const enhancedDoctor = { ...doctor };
       
       // Add field name
@@ -126,6 +126,24 @@ const AdminService = {
       
       return enhancedDoctor;
     });
+
+    // Apply client-side filtering
+    if (fieldCode || field) {
+      const filterFieldCode = fieldCode || field;
+      enhancedDoctors = enhancedDoctors.filter(doctor => 
+        doctor.field === parseInt(filterFieldCode) || 
+        doctor.fieldCode === parseInt(filterFieldCode)
+      );
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      enhancedDoctors = enhancedDoctors.filter(doctor =>
+        doctor.doctorName?.toLowerCase().includes(searchLower) ||
+        doctor.fieldName?.toLowerCase().includes(searchLower) ||
+        doctor.hospitalName?.toLowerCase().includes(searchLower)
+      );
+    }
     
     return enhancedDoctors;
   },

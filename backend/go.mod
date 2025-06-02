@@ -1,6 +1,6 @@
 module backend
 
-go 1.24.1
+go 1.24.0
 
 require (
 	cloud.google.com/go/auth v0.16.1 // indirect

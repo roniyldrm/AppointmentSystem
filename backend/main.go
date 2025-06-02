@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -127,17 +128,33 @@ func main() {
 	mux.HandleFunc("/ws/doctor/{doctorCode}", handleDoctorWebSocket)
 	mux.HandleFunc("/ws/admin", handleAdminWebSocket)
 
-	// Configure CORS
+	// Configure CORS with improved handling
 	corsOrigins := os.Getenv("CORS_ORIGINS")
+	var allowedOrigins []string
+
 	if corsOrigins == "" {
-		corsOrigins = "*"
+		// Default for development
+		allowedOrigins = []string{"*"}
+		log.Println("CORS: Using wildcard (*) for all origins - suitable for development only")
+	} else {
+		// Split comma-separated origins for production
+		allowedOrigins = strings.Split(corsOrigins, ",")
+		// Trim whitespace from each origin
+		for i, origin := range allowedOrigins {
+			allowedOrigins[i] = strings.TrimSpace(origin)
+		}
+		log.Printf("CORS: Using specific origins: %v", allowedOrigins)
 	}
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{corsOrigins},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
+		// Enable preflight for all routes
+		OptionsPassthrough: false,
+		// Add debug mode for development
+		Debug: corsOrigins == "",
 	})
 
 	handler := c.Handler(mux)

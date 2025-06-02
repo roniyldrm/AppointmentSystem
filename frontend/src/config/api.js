@@ -2,17 +2,18 @@
 // During development, it uses localhost
 // During production, it uses the Render backend URL
 
-// Check if we're in production and if REACT_APP_API_URL is set
-const API_URL = process.env.REACT_APP_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? "https://appointmentsystem-ds5x.onrender.com/api"  // Replace this with your actual Render URL
-    : "http://localhost:8080/api");
+// For development, always use localhost
+// For production, use environment variable or fallback to placeholder
+const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+
+const API_URL = isDevelopment 
+  ? "http://localhost:8080/api"  // Always use localhost in development
+  : (process.env.REACT_APP_API_URL || "https://appointmentsystem-ds5x.onrender.com/api");
 
 // WebSocket URL configuration  
-const WS_URL_BASE = process.env.REACT_APP_WS_URL || 
-  (process.env.NODE_ENV === 'production'
-    ? "wss://appointmentsystem-ds5x.onrender.com"        // Replace this with your actual Render URL
-    : "ws://localhost:8080");
+const WS_URL_BASE = isDevelopment
+  ? "ws://localhost:8080"  // Always use localhost in development
+  : (process.env.REACT_APP_WS_URL || "wss://appointmentsystem-ds5x.onrender.com");
 
 // Kullanıcı koduna göre WebSocket URL'si oluşturma fonksiyonu
 const getWsUrl = (userCode) => {
@@ -33,6 +34,7 @@ const getWsUrl = (userCode) => {
 
 // Debug info
 console.log('Environment:', process.env.NODE_ENV);
+console.log('Is Development:', isDevelopment);
 console.log('API configuration loaded with URL:', API_URL);
 console.log('WebSocket base URL:', WS_URL_BASE);
 

@@ -175,7 +175,7 @@ const ManageHospitals = () => {
   };
   
   const handleDeleteHospital = async (hospitalCode) => {
-    if (!window.confirm('Are you sure you want to delete this hospital? This action cannot be undone.')) {
+    if (!window.confirm('Bu hastaneyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
       return;
     }
     
@@ -185,7 +185,7 @@ const ManageHospitals = () => {
       // Remove from local state
       setHospitals(hospitals.filter(hosp => hosp.hospitalCode !== hospitalCode));
     } catch (err) {
-      setError('Failed to delete hospital. Please try again.');
+      setError('Hastane silinirken hata oluştu. Lütfen tekrar deneyin.');
       console.error('Error deleting hospital:', err);
     }
   };
@@ -226,7 +226,7 @@ const ManageHospitals = () => {
   return (
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Manage Hospitals</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Hastaneleri Yönet</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -236,12 +236,12 @@ const ManageHospitals = () => {
         
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filters</h2>
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filtreler</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="provinceCode">
-                City
+                Şehir
               </label>
               <select
                 id="provinceCode"
@@ -250,7 +250,7 @@ const ManageHospitals = () => {
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
-                <option value="">All Cities</option>
+                <option value="">Tüm Şehirler</option>
                 {Array.isArray(cities) && cities.map(city => (
                   <option key={city.code} value={city.code}>{city.name}</option>
                 ))}
@@ -259,7 +259,7 @@ const ManageHospitals = () => {
             
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="districtCode">
-                District
+                İlçe
               </label>
               <select
                 id="districtCode"
@@ -269,7 +269,7 @@ const ManageHospitals = () => {
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 disabled={!filter.provinceCode}
               >
-                <option value="">All Districts</option>
+                <option value="">Tüm İlçeler</option>
                 {Array.isArray(districts) && districts.map(district => (
                   <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                 ))}
@@ -278,13 +278,13 @@ const ManageHospitals = () => {
             
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="search">
-                Search
+                Ara
               </label>
               <input
                 id="search"
                 name="search"
                 type="text"
-                placeholder="Search by name..."
+                placeholder="İsme göre ara..."
                 value={filter.search}
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -297,13 +297,13 @@ const ManageHospitals = () => {
               onClick={handleResetFilter}
               className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
             >
-              Reset
+              Sıfırla
             </button>
             <button
               onClick={handleApplyFilter}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
-              Apply Filters
+              Filtreleri Uygula
             </button>
           </div>
         </div>
@@ -314,7 +314,7 @@ const ManageHospitals = () => {
             onClick={handleCreateHospital}
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
           >
-            Add New Hospital
+            Yeni Hastane Ekle
           </button>
         </div>
         
@@ -326,7 +326,7 @@ const ManageHospitals = () => {
             </div>
           ) : hospitals.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No hospitals found matching your criteria.</p>
+              <p className="text-gray-500">Kriterlere uygun hastane bulunamadı.</p>
             </div>
           ) : (
             <>
@@ -335,19 +335,19 @@ const ManageHospitals = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hospital Name
+                        Hastane Adı
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Code
+                        Kod
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Location
+                        Konum
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact
+                        İletişim
                       </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        İşlemler
                       </th>
                     </tr>
                   </thead>
@@ -381,13 +381,13 @@ const ManageHospitals = () => {
                             onClick={() => handleEditHospital(hospital)}
                             className="text-blue-600 hover:text-blue-900 mr-3"
                           >
-                            Edit
+                            Düzenle
                           </button>
                           <button
                             onClick={() => handleDeleteHospital(hospital.hospitalCode)}
                             className="text-red-600 hover:text-red-900"
                           >
-                            Delete
+                            Sil
                           </button>
                         </td>
                       </tr>
@@ -406,10 +406,10 @@ const ManageHospitals = () => {
                       page === 1 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Previous
+                    Önceki
                   </button>
                   <span className="text-sm text-gray-700">
-                    Page {page} of {totalPages}
+                    Sayfa {page} / {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
@@ -418,7 +418,7 @@ const ManageHospitals = () => {
                       page === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Next
+                    Sonraki
                   </button>
                 </div>
               </div>
@@ -432,12 +432,12 @@ const ManageHospitals = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Hospital</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Hastane Düzenle</h3>
               
               <form onSubmit={handleUpdateHospital}>
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hospitalName">
-                    Hospital Name
+                    Hastane Adı
                   </label>
                   <input
                     id="hospitalName"
@@ -451,7 +451,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hospitalCode">
-                    Hospital Code
+                    Hastane Kodu
                   </label>
                   <input
                     id="hospitalCode"
@@ -466,7 +466,7 @@ const ManageHospitals = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editProvinceCode">
-                      City
+                      Şehir
                     </label>
                     <select
                       id="editProvinceCode"
@@ -478,7 +478,7 @@ const ManageHospitals = () => {
                       className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       required
                     >
-                      <option value="">Select City</option>
+                      <option value="">Şehir Seç</option>
                       {Array.isArray(cities) && cities.map(city => (
                         <option key={city.code} value={city.code}>{city.name}</option>
                       ))}
@@ -487,7 +487,7 @@ const ManageHospitals = () => {
                   
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editDistrictCode">
-                      District
+                      İlçe
                     </label>
                     <select
                       id="editDistrictCode"
@@ -496,7 +496,7 @@ const ManageHospitals = () => {
                       className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       disabled={!activeHospital.provinceCode}
                     >
-                      <option value="">Select District</option>
+                      <option value="">İlçe Seç</option>
                       {Array.isArray(districts) && districts.map(district => (
                         <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                       ))}
@@ -506,7 +506,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">
-                    Address
+                    Adres
                   </label>
                   <textarea
                     id="address"
@@ -519,7 +519,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phone">
-                    Phone
+                    Telefon
                   </label>
                   <input
                     id="phone"
@@ -536,13 +536,13 @@ const ManageHospitals = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                     onClick={handleCloseModal}
                   >
-                    Cancel
+                    İptal
                   </button>
                   <button
                     type="submit"
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    Update
+                    Güncelle
                   </button>
                 </div>
               </form>
@@ -556,12 +556,12 @@ const ManageHospitals = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Hospital</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Yeni Hastane Ekle</h3>
               
               <form onSubmit={handleSubmitCreate}>
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newHospitalName">
-                    Hospital Name*
+                    Hastane Adı*
                   </label>
                   <input
                     id="newHospitalName"
@@ -575,7 +575,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newHospitalCode">
-                    Hospital Code*
+                    Hastane Kodu*
                   </label>
                   <input
                     id="newHospitalCode"
@@ -590,7 +590,7 @@ const ManageHospitals = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newProvinceCode">
-                      City*
+                      Şehir*
                     </label>
                     <select
                       id="newProvinceCode"
@@ -602,7 +602,7 @@ const ManageHospitals = () => {
                       className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       required
                     >
-                      <option value="">Select City</option>
+                      <option value="">Şehir Seç</option>
                       {Array.isArray(cities) && cities.map(city => (
                         <option key={city.code} value={city.code}>{city.name}</option>
                       ))}
@@ -611,7 +611,7 @@ const ManageHospitals = () => {
                   
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newDistrictCode">
-                      District
+                      İlçe
                     </label>
                     <select
                       id="newDistrictCode"
@@ -620,7 +620,7 @@ const ManageHospitals = () => {
                       className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       disabled={!activeHospital.provinceCode}
                     >
-                      <option value="">Select District</option>
+                      <option value="">İlçe Seç</option>
                       {Array.isArray(districts) && districts.map(district => (
                         <option key={district.districtCode} value={district.districtCode}>{district.districtName}</option>
                       ))}
@@ -630,7 +630,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newAddress">
-                    Address
+                    Adres
                   </label>
                   <textarea
                     id="newAddress"
@@ -643,7 +643,7 @@ const ManageHospitals = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newPhone">
-                    Phone
+                    Telefon
                   </label>
                   <input
                     id="newPhone"
@@ -660,13 +660,13 @@ const ManageHospitals = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                     onClick={handleCloseCreateModal}
                   >
-                    Cancel
+                    İptal
                   </button>
                   <button
                     type="submit"
                     className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    Create
+                    Oluştur
                   </button>
                 </div>
               </form>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import AppointmentService from '../services/appointment';
 
@@ -86,6 +86,44 @@ const DoctorAppointments = () => {
     return `${formattedHour}:${minutes} ${ampm}`;
   };
   
+  // Safely calculate today's date once outside render loop
+  const today = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }, []);
+
+  // Helper function to determine appointment display status (memoized)
+  const getAppointmentDisplayStatus = useMemo(() => {
+    return (appointment) => {
+      // If explicitly cancelled, show cancelled
+      if (appointment.status === 'CANCELLED') {
+        return { text: 'CANCELLED', style: 'bg-red-100 text-red-800' };
+      }
+      
+      // If cancellation requested, show that
+      if (appointment.cancelRequested) {
+        return { text: 'Cancellation Requested', style: 'bg-yellow-100 text-yellow-800' };
+      }
+      
+      // If explicitly completed, show completed
+      if (appointment.status === 'COMPLETED') {
+        return { text: 'COMPLETED', style: 'bg-green-100 text-green-800' };
+      }
+      
+      // For past appointments that haven't been explicitly set to completed/cancelled
+      const appointmentDate = new Date(appointment.date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      
+      if (appointmentDate < today) {
+        return { text: 'COMPLETED', style: 'bg-green-100 text-green-800' };
+      }
+      
+      // For upcoming appointments
+      return { text: appointment.status || 'SCHEDULED', style: 'bg-blue-100 text-blue-800' };
+    };
+  }, [today]);
+
   // Filter appointments by date
   const upcomingAppointments = appointments.filter(
     appointment => new Date(appointment.date) >= new Date()
@@ -209,17 +247,14 @@ const DoctorAppointments = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          appointment.status === 'CANCELLED'
-                            ? 'bg-red-100 text-red-800'
-                            : appointment.cancelRequested
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : appointment.status === 'COMPLETED'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {appointment.cancelRequested ? 'Cancellation Requested' : appointment.status || 'SCHEDULED'}
-                        </span>
+                        {(() => {
+                          const statusInfo = getAppointmentDisplayStatus(appointment);
+                          return (
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusInfo.style}`}>
+                              {statusInfo.text}
+                            </span>
+                          );
+                        })()}
                       </td>
                       {activeTab === 'upcoming' && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

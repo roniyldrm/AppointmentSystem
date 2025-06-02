@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import AdminService from '../services/admin';
@@ -57,6 +57,50 @@ const AdminDashboard = () => {
     return timeString;
   };
 
+  // Get appointment status with proper class and date awareness (similar to PatientProfile)
+  const getAppointmentDisplayStatus = useMemo(() => {
+    return (appointment) => {
+      const status = appointment.status;
+      
+      // If explicitly cancelled, show cancelled
+      if (status && status.toUpperCase() === 'CANCELLED') {
+        return { text: 'İptal Edildi', style: 'bg-red-100 text-red-800' };
+      }
+      
+      // If explicitly completed, show completed
+      if (status && status.toUpperCase() === 'COMPLETED') {
+        return { text: 'Tamamlandı', style: 'bg-green-100 text-green-800' };
+      }
+      
+      // Check if appointment is in the past (with safe date handling)
+      const appointmentDate = appointment.date;
+      
+      if (!appointmentDate) {
+        // If no date available, default to scheduled
+        return { text: 'Planlandı', style: 'bg-blue-100 text-blue-800' };
+      }
+      
+      try {
+        const apptDate = new Date(appointmentDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        apptDate.setHours(0, 0, 0, 0);
+        
+        if (apptDate < today) {
+          // Past appointment that hasn't been explicitly cancelled should show as completed
+          return { text: 'Tamamlandı', style: 'bg-green-100 text-green-800' };
+        } else {
+          // Future appointment
+          return { text: 'Planlandı', style: 'bg-blue-100 text-blue-800' };
+        }
+      } catch (e) {
+        // If date parsing fails, default to scheduled
+        console.warn('Failed to parse appointment date:', appointmentDate, e);
+        return { text: 'Planlandı', style: 'bg-blue-100 text-blue-800' };
+      }
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -102,8 +146,8 @@ const AdminDashboard = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-600">Hospital management overview</p>
+          <h1 className="text-3xl font-bold text-gray-900">Yönetici Gösterge Paneli</h1>
+          <p className="mt-2 text-gray-600">Hastane yönetimi genel bakış</p>
         </div>
 
         {/* Stats Cards */}
@@ -117,7 +161,7 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Patients</p>
+                  <p className="text-sm font-medium text-gray-600">Toplam Hasta</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.data?.totalPatients || 0}</p>
                 </div>
               </div>
@@ -127,11 +171,11 @@ const AdminDashboard = () => {
               <div className="flex items-center">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Doctors</p>
+                  <p className="text-sm font-medium text-gray-600">Toplam Doktor</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.data?.totalDoctors || 0}</p>
                 </div>
               </div>
@@ -145,7 +189,7 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Hospitals</p>
+                  <p className="text-sm font-medium text-gray-600">Toplam Hastane</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.data?.totalHospitals || 0}</p>
                 </div>
               </div>
@@ -159,7 +203,7 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Appointments</p>
+                  <p className="text-sm font-medium text-gray-600">Toplam Randevu</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.data?.totalAppointments || 0}</p>
                 </div>
               </div>
@@ -170,39 +214,39 @@ const AdminDashboard = () => {
         {/* Recent Appointments */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Recent Appointments</h2>
+            <h2 className="text-lg font-medium text-gray-900">Son Randevular</h2>
           </div>
           <div className="overflow-x-auto">
             {appointmentsLoading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading appointments...</span>
+                <span className="ml-3 text-gray-600">Randevular yükleniyor...</span>
               </div>
             ) : appointments.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500">No appointments found</p>
+                <p className="text-gray-500">Randevu bulunamadı</p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Patient
+                      Hasta
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Doctor
+                      Doktor
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Hospital
+                      Hastane
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Specialty
+                      Uzmanlık
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Time
+                      Tarih & Saat
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Durum
                     </th>
                   </tr>
                 </thead>
@@ -235,9 +279,14 @@ const AdminDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          {appointment.status}
-                        </span>
+                        {(() => {
+                          const statusInfo = getAppointmentDisplayStatus(appointment);
+                          return (
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.style}`}>
+                              {statusInfo.text}
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

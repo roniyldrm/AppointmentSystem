@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import AppointmentService from '../services/appointment';
@@ -105,45 +105,113 @@ const PatientProfile = () => {
   };
   
   // Safely filter appointments by date with null/undefined checking
+  // Move ALL cancelled appointments to past section (appointment history)
   const upcomingAppointments = Array.isArray(appointments) 
-    ? appointments.filter(appointment => 
-        appointment && 
-        (appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date)) && 
-        new Date(appointment.date || appointment.appointmentTime.date) >= new Date()
-      )
+    ? appointments.filter(appointment => {
+        if (!appointment) return false;
+        
+        // Don't show cancelled appointments in upcoming - they go to past
+        if (appointment.status && appointment.status.toUpperCase() === 'CANCELLED') {
+          return false;
+        }
+        
+        const appointmentDate = appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date);
+        
+        if (!appointmentDate) {
+          // If no date available and not cancelled, don't show
+          return false;
+        }
+        
+        try {
+          const apptDate = new Date(appointmentDate);
+          const today = new Date();
+          return apptDate >= today;
+        } catch (e) {
+          // If date parsing fails and not cancelled, don't show
+          return false;
+        }
+      })
     : [];
   
   const pastAppointments = Array.isArray(appointments)
-    ? appointments.filter(appointment => 
-        appointment && 
-        (appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date)) && 
-        new Date(appointment.date || appointment.appointmentTime.date) < new Date()
-      )
+    ? appointments.filter(appointment => {
+        if (!appointment) return false;
+        
+        // Always show cancelled appointments in past section (appointment history)
+        if (appointment.status && appointment.status.toUpperCase() === 'CANCELLED') {
+          return true;
+        }
+        
+        const appointmentDate = appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date);
+        
+        if (!appointmentDate) {
+          // If no date available and not cancelled, don't show in past
+          return false;
+        }
+        
+        try {
+          const apptDate = new Date(appointmentDate);
+          const today = new Date();
+          return apptDate < today;
+        } catch (e) {
+          // If date parsing fails and not cancelled, don't show in past
+          return false;
+        }
+      })
     : [];
   
   const displayAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
   
-  // Get the appointment status with proper class
-  const getStatusBadge = (status) => {
+  // Get the appointment status with proper class and date awareness
+  const getStatusBadge = (appointment) => {
+    const status = appointment.status;
     let badgeClass = 'badge-blue';
-    let statusText = 'Scheduled';
+    let statusText = 'Planlandı';
     
-    if (!status) {
+    // If explicitly cancelled, show cancelled regardless of date
+    if (status && status.toUpperCase() === 'CANCELLED') {
+      badgeClass = 'badge-red';
+      statusText = 'İptal Edildi';
       return <span className={`badge ${badgeClass}`}>{statusText}</span>;
     }
     
-    switch(status.toUpperCase()) {
-      case 'CANCELLED':
-        badgeClass = 'badge-red';
-        statusText = 'İptal Edildi';
-        break;
-      case 'COMPLETED':
+    // If explicitly completed, show completed
+    if (status && status.toUpperCase() === 'COMPLETED') {
+      badgeClass = 'badge-green';
+      statusText = 'Tamamlandı';
+      return <span className={`badge ${badgeClass}`}>{statusText}</span>;
+    }
+    
+    // Check if appointment is in the past (with safe date handling)
+    const appointmentDate = appointment.date || (appointment.appointmentTime && appointment.appointmentTime.date);
+    
+    if (!appointmentDate) {
+      // If no date available, default to scheduled
+      badgeClass = 'badge-blue';
+      statusText = 'Planlandı';
+      return <span className={`badge ${badgeClass}`}>{statusText}</span>;
+    }
+    
+    try {
+      const apptDate = new Date(appointmentDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      apptDate.setHours(0, 0, 0, 0);
+      
+      if (apptDate < today) {
+        // Past appointment that hasn't been explicitly cancelled should show as completed
         badgeClass = 'badge-green';
         statusText = 'Tamamlandı';
-        break;
-      default:
+      } else {
+        // Future appointment
         badgeClass = 'badge-blue';
         statusText = 'Planlandı';
+      }
+    } catch (e) {
+      // If date parsing fails, default to scheduled
+      console.warn('Failed to parse appointment date:', appointmentDate, e);
+      badgeClass = 'badge-blue';
+      statusText = 'Planlandı';
     }
     
     return <span className={`badge ${badgeClass}`}>{statusText}</span>;
@@ -321,7 +389,7 @@ const PatientProfile = () => {
                       </td>
                       
                       <td>
-                        {getStatusBadge(appointment.status)}
+                        {getStatusBadge(appointment)}
                       </td>
                       
                       {activeTab === 'upcoming' && (

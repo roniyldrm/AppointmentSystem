@@ -47,19 +47,13 @@ module.exports = (env, argv) => {
       ]
     },
     resolve: {
-      extensions: ['.js', '.jsx'],
-      fallback: {
-        "process": require.resolve("process/browser")
-      }
+      extensions: ['.js', '.jsx']
     },
     plugins: [
       new webpack.DefinePlugin({
         'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
         'process.env.REACT_APP_API_URL': JSON.stringify(process.env.REACT_APP_API_URL),
         'process.env.REACT_APP_WS_URL': JSON.stringify(process.env.REACT_APP_WS_URL)
-      }),
-      new webpack.ProvidePlugin({
-        process: 'process/browser'
       }),
       new HtmlWebpackPlugin({
         template: './public/index.html',

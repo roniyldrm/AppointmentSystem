@@ -20,7 +20,6 @@ const ManageHospitals = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   useEffect(() => {
-    // Check authentication on load
     const token = localStorage.getItem("token");
     if (!token) {
       console.warn("No authentication token found");
@@ -32,6 +31,18 @@ const ManageHospitals = () => {
     fetchHospitals();
     fetchCities();
   }, [page]);
+  
+  // Debounced filtering effect
+  useEffect(() => {
+    console.log("Hospital filter changed:", filter);
+    
+    const debounceTimer = setTimeout(() => {
+      console.log("Applying hospital filter with debounce:", filter);
+      fetchHospitals();
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(debounceTimer);
+  }, [filter.search, filter.provinceCode, filter.districtCode]);
   
   const fetchHospitals = async () => {
     try {
@@ -125,20 +136,22 @@ const ManageHospitals = () => {
   };
   
   const handleApplyFilter = () => {
+    console.log("Manual hospital filter application triggered");
     setPage(1); // Reset to first page when applying filters
     fetchHospitals();
   };
   
   const handleResetFilter = () => {
-    setFilter({
+    console.log("Resetting hospital filters");
+    const newFilter = {
       provinceCode: '',
       districtCode: '',
       search: ''
-    });
+    };
+    setFilter(newFilter);
     setDistricts([]);
-    
     setPage(1);
-    fetchHospitals();
+    // fetchHospitals will be called automatically by useEffect when filter changes
   };
   
   const handleEditHospital = (hospital) => {

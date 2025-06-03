@@ -27,6 +27,7 @@ import DoctorAppointments from './components/DoctorAppointments';
 import AdminDashboard from './components/AdminDashboard';
 import ManageDoctors from './components/ManageDoctors';
 import ManageHospitals from './components/ManageHospitals';
+import ManageUsers from './components/ManageUsers';
 import ManageAppointments from './components/ManageAppointments';
 
 // Navbar Component
@@ -89,6 +90,9 @@ const Navbar = () => {
               </Link>
               <Link to="/admin/hospitals" className={`nav-link ${location.pathname === '/admin/hospitals' ? 'nav-link-active' : ''}`}>
                 <i className="fas fa-hospital mr-1"></i> Hastaneler
+              </Link>
+              <Link to="/admin/users" className={`nav-link ${location.pathname === '/admin/users' ? 'nav-link-active' : ''}`}>
+                <i className="fas fa-users mr-1"></i> Kullanıcılar
               </Link>
             </>
           )}
@@ -194,6 +198,9 @@ const AppContent = () => {
           } />
           <Route path="/admin/hospitals" element={
             <ProtectedRoute element={<ManageHospitals />} allowedRoles={['admin']} />
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute element={<ManageUsers />} allowedRoles={['admin']} />
           } />
           <Route path="/admin/appointments" element={
             <ProtectedRoute element={<ManageAppointments />} allowedRoles={['admin']} />

@@ -19,8 +19,8 @@ const ManageDoctors = () => {
   const [activeDoctor, setActiveDoctor] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   
+  // Debounce the search to avoid too many API calls
   useEffect(() => {
-    // Check authentication on load
     const token = localStorage.getItem("token");
     if (!token) {
       console.warn("No authentication token found");
@@ -33,6 +33,18 @@ const ManageDoctors = () => {
     fetchFields();
     fetchHospitals();
   }, [page]);
+  
+  // Debounced filtering effect
+  useEffect(() => {
+    console.log("Filter changed:", filter);
+    
+    const debounceTimer = setTimeout(() => {
+      console.log("Applying filter with debounce:", filter);
+      fetchDoctors();
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(debounceTimer);
+  }, [filter.search, filter.hospitalCode, filter.fieldCode]);
   
   const fetchDoctors = async () => {
     try {
@@ -114,19 +126,21 @@ const ManageDoctors = () => {
   };
   
   const handleApplyFilter = () => {
+    console.log("Manual filter application triggered");
     setPage(1); // Reset to first page when applying filters
     fetchDoctors();
   };
   
   const handleResetFilter = () => {
-    setFilter({
+    console.log("Resetting filters");
+    const newFilter = {
       hospitalCode: '',
       fieldCode: '',
       search: ''
-    });
-    
+    };
+    setFilter(newFilter);
     setPage(1);
-    fetchDoctors();
+    // fetchDoctors will be called automatically by useEffect when filter changes
   };
   
   const handleEditDoctor = (doctor) => {

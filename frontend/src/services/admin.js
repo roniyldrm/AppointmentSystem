@@ -26,8 +26,42 @@ const AdminService = {
     if (role) url += `&role=${role}`;
     if (search) url += `&search=${search}`;
     
-    const response = await apiClient.get(url);
-    return response.data;
+    try {
+      const response = await apiClient.get(url);
+      let users = response.data;
+      
+      // If we don't get an array directly, try to get it from data property
+      if (!Array.isArray(users) && users && Array.isArray(users.data)) {
+        users = users.data;
+      }
+      
+      // Ensure we have an array
+      if (!Array.isArray(users)) {
+        users = [];
+      }
+      
+      // Apply client-side filtering if search wasn't handled by backend
+      if (search && users.length > 0) {
+        const searchLower = search.toLowerCase();
+        users = users.filter(user =>
+          user.firstName?.toLowerCase().includes(searchLower) ||
+          user.lastName?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower) ||
+          user.phone?.toLowerCase().includes(searchLower) ||
+          `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Apply role filtering if not handled by backend
+      if (role && users.length > 0) {
+        users = users.filter(user => user.role === role);
+      }
+      
+      return users;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
   },
   
   createUser: async (userData) => {
@@ -49,17 +83,83 @@ const AdminService = {
   getHospitals: async (params = {}) => {
     const { page = 1, limit = 50, provinceCode, districtCode, search } = params;
     
+    console.log('=== getHospitals Debug ===');
+    console.log('getHospitals called with params:', params);
+    console.log('Search term received:', search);
+    console.log('Search term type:', typeof search);
+    console.log('Search term length:', search ? search.length : 0);
+    
+    let hospitals;
+    
     // Priority: districtCode > provinceCode > all hospitals
     if (districtCode) {
       const response = await apiClient.get(`/hospitals/district/${districtCode}`);
-      return response.data;
+      hospitals = response.data;
+      console.log('Fetched hospitals by district:', hospitals.length);
     } else if (provinceCode) {
       const response = await apiClient.get(`/hospitals/${provinceCode}`);
-      return response.data;
+      hospitals = response.data;
+      console.log('Fetched hospitals by province:', hospitals.length);
     } else {
       const response = await apiClient.get('/hospitals');
-      return response.data;
+      hospitals = response.data;
+      console.log('Fetched all hospitals:', hospitals.length);
     }
+    
+    // Ensure we have an array
+    if (!Array.isArray(hospitals)) {
+      console.warn('Hospitals response is not an array:', hospitals);
+      hospitals = [];
+    }
+    
+    console.log('Before search filtering:', hospitals.length, 'hospitals');
+    
+    // Log a sample hospital to see available fields
+    if (hospitals.length > 0) {
+      console.log('Sample hospital structure:', hospitals[0]);
+    }
+    
+    // Apply client-side search filtering
+    if (search && search.trim() !== '' && hospitals.length > 0) {
+      const searchLower = search.toLowerCase().trim();
+      console.log('Applying search filter with term:', `"${searchLower}"`);
+      
+      const originalCount = hospitals.length;
+      
+      hospitals = hospitals.filter(hospital => {
+        // Log each hospital being checked
+        console.log(`Checking hospital: ${hospital.hospitalName || 'No name'}`);
+        
+        const matchFields = {
+          hospitalName: hospital.hospitalName?.toLowerCase().includes(searchLower),
+          hospitalCode: hospital.hospitalCode?.toLowerCase().includes(searchLower),
+          address: hospital.address?.toLowerCase().includes(searchLower),
+          phone: hospital.phone?.toLowerCase().includes(searchLower),
+          cityName: hospital.cityName?.toLowerCase().includes(searchLower),
+          districtName: hospital.districtName?.toLowerCase().includes(searchLower)
+        };
+        
+        console.log(`  Match fields for ${hospital.hospitalName}:`, matchFields);
+        
+        const matches = Object.values(matchFields).some(match => match === true);
+        
+        if (matches) {
+          console.log(`  ✓ Hospital MATCHED: ${hospital.hospitalName}`);
+        } else {
+          console.log(`  ✗ Hospital did not match: ${hospital.hospitalName}`);
+        }
+        
+        return matches;
+      });
+      
+      console.log(`Search filtering result: ${originalCount} -> ${hospitals.length} hospitals`);
+    } else {
+      console.log('No search filter applied');
+    }
+    
+    console.log('Final hospital count:', hospitals.length);
+    console.log('=== End getHospitals Debug ===');
+    return hospitals;
   },
   
   createHospital: async (hospitalData) => {
@@ -81,22 +181,40 @@ const AdminService = {
   getDoctors: async (params = {}) => {
     const { page = 1, limit = 50, hospitalCode, field, fieldCode, search } = params;
     
+    console.log('=== getDoctors Debug ===');
+    console.log('getDoctors called with params:', params);
+    console.log('Search term received:', search);
+    console.log('Search term type:', typeof search);
+    console.log('Search term length:', search ? search.length : 0);
+    
     let doctors;
     if (hospitalCode) {
       const response = await apiClient.get(`/doctors/${hospitalCode}`);
       doctors = response.data;
+      console.log('Fetched doctors by hospital:', doctors.length);
     } else {
       const response = await apiClient.get('/doctors');
       doctors = response.data;
+      console.log('Fetched all doctors:', doctors.length);
     }
+    
+    // Ensure we have an array
+    if (!Array.isArray(doctors)) {
+      console.warn('Doctors response is not an array:', doctors);
+      doctors = [];
+    }
+    
+    console.log('Before enhancement:', doctors.length, 'doctors');
     
     // Fetch all hospitals once for mapping
     let hospitalsMap = {};
     try {
       const hospitalsResponse = await apiClient.get('/hospitals');
-      hospitalsResponse.data.forEach(hospital => {
-        hospitalsMap[hospital.hospitalCode] = hospital.hospitalName;
-      });
+      if (Array.isArray(hospitalsResponse.data)) {
+        hospitalsResponse.data.forEach(hospital => {
+          hospitalsMap[hospital.hospitalCode] = hospital.hospitalName;
+        });
+      }
     } catch (error) {
       console.warn('Could not fetch hospitals for mapping:', error);
     }
@@ -127,24 +245,66 @@ const AdminService = {
       return enhancedDoctor;
     });
 
+    console.log('After enhancement:', enhancedDoctors.length, 'doctors');
+    
+    // Log a sample doctor to see available fields
+    if (enhancedDoctors.length > 0) {
+      console.log('Sample doctor structure:', enhancedDoctors[0]);
+    }
+
     // Apply client-side filtering
     if (fieldCode || field) {
       const filterFieldCode = fieldCode || field;
+      console.log('Applying field filter:', filterFieldCode);
+      const originalCount = enhancedDoctors.length;
       enhancedDoctors = enhancedDoctors.filter(doctor => 
         doctor.field === parseInt(filterFieldCode) || 
         doctor.fieldCode === parseInt(filterFieldCode)
       );
+      console.log(`Field filtering: ${originalCount} -> ${enhancedDoctors.length} doctors`);
     }
 
-    if (search) {
-      const searchLower = search.toLowerCase();
-      enhancedDoctors = enhancedDoctors.filter(doctor =>
-        doctor.doctorName?.toLowerCase().includes(searchLower) ||
-        doctor.fieldName?.toLowerCase().includes(searchLower) ||
-        doctor.hospitalName?.toLowerCase().includes(searchLower)
-      );
+    if (search && search.trim() !== '' && enhancedDoctors.length > 0) {
+      const searchLower = search.toLowerCase().trim();
+      console.log('Applying search filter with term:', `"${searchLower}"`);
+      
+      const originalCount = enhancedDoctors.length;
+      
+      enhancedDoctors = enhancedDoctors.filter(doctor => {
+        // Log each doctor being checked
+        console.log(`Checking doctor: ${doctor.doctorName || 'No name'}`);
+        
+        const matchFields = {
+          doctorName: doctor.doctorName?.toLowerCase().includes(searchLower),
+          firstName: doctor.firstName?.toLowerCase().includes(searchLower),
+          lastName: doctor.lastName?.toLowerCase().includes(searchLower),
+          fieldName: doctor.fieldName?.toLowerCase().includes(searchLower),
+          hospitalName: doctor.hospitalName?.toLowerCase().includes(searchLower),
+          email: doctor.email?.toLowerCase().includes(searchLower),
+          phone: doctor.phone?.toLowerCase().includes(searchLower),
+          fullName: `${doctor.firstName || ''} ${doctor.lastName || ''}`.toLowerCase().includes(searchLower)
+        };
+        
+        console.log(`  Match fields for ${doctor.doctorName}:`, matchFields);
+        
+        const matches = Object.values(matchFields).some(match => match === true);
+        
+        if (matches) {
+          console.log(`  ✓ Doctor MATCHED: ${doctor.doctorName}`);
+        } else {
+          console.log(`  ✗ Doctor did not match: ${doctor.doctorName}`);
+        }
+        
+        return matches;
+      });
+      
+      console.log(`Search filtering result: ${originalCount} -> ${enhancedDoctors.length} doctors`);
+    } else {
+      console.log('No search filter applied');
     }
     
+    console.log('Final doctor count:', enhancedDoctors.length);
+    console.log('=== End getDoctors Debug ===');
     return enhancedDoctors;
   },
   

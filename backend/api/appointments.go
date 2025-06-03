@@ -75,7 +75,57 @@ func init() {
 	}
 }
 
+// CheckUserAppointmentLimit validates if a user can make a new appointment
+// Users are limited to 3 appointments per week
+func CheckUserAppointmentLimit(client *mongo.Client, userCode string) error {
+	// Calculate the date range for the last 7 days
+	now := time.Now()
+	oneWeekAgo := now.AddDate(0, 0, -7)
+
+	// Get user's appointments from the last 7 days
+	collection := client.Database("healthcare").Collection("appointments")
+
+	// Create filter for appointments in the last week
+	filter := bson.M{
+		"userCode": userCode,
+		"createdAt": bson.M{
+			"$gte": oneWeekAgo,
+		},
+	}
+
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		log.Printf("Error querying appointments for user %s: %v", userCode, err)
+		return err
+	}
+	defer cursor.Close(context.TODO())
+
+	var recentAppointments []Appointment
+	err = cursor.All(context.TODO(), &recentAppointments)
+	if err != nil {
+		log.Printf("Error reading appointments for user %s: %v", userCode, err)
+		return err
+	}
+
+	appointmentCount := len(recentAppointments)
+	log.Printf("User %s has %d appointments in the last 7 days", userCode, appointmentCount)
+
+	// Check if user has reached the limit
+	if appointmentCount >= 3 {
+		return errors.New("appointment limit exceeded: you can only have 3 appointments per week. Please wait before scheduling another appointment")
+	}
+
+	return nil
+}
+
 func CreateAppointment(client *mongo.Client, appointment Appointment) error {
+	// Check appointment limit before proceeding
+	err := CheckUserAppointmentLimit(client, appointment.UserCode)
+	if err != nil {
+		log.Printf("Appointment limit check failed for user %s: %v", appointment.UserCode, err)
+		return err
+	}
+
 	collection := client.Database("healthcare").Collection("appointments")
 	appointment.AppointmentCode = helper.GenerateID(8)
 	appointment.CreatedAt = time.Now()

@@ -16,19 +16,39 @@ const AppointmentService = {
     return await apiClient.get(`/fields/${provinceCode}`);
   },
   
+  // Get all fields for a district code  
+  getFieldsByDistrict: async (districtCode) => {
+    return await apiClient.get(`/fields/district/${districtCode}`);
+  },
+  
   // Get hospitals by province, district and field
   getHospitals: async (provinceCode, districtCode = null, fieldCode = null) => {
+    let url = `/hospitals/${provinceCode}`;
+    
+    // Add district if provided
     if (districtCode) {
-      return await apiClient.get(`/hospitals/district/${districtCode}`);
-    } else {
-      return await apiClient.get(`/hospitals/${provinceCode}`);
+      url = `/hospitals/district/${districtCode}`;
     }
+    
+    const params = new URLSearchParams();
+    if (fieldCode) params.append('field', fieldCode);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return await apiClient.get(url);
+  },
+  
+  // Get all hospitals
+  getAllHospitals: async () => {
+    return await apiClient.get('/hospitals');
   },
   
   // Get doctors by various parameters
   getDoctors: async (params = {}) => {
     console.log("Getting doctors with params:", params);
-    const { hospitalCode, cityCode, districtCode, fieldCode, startDate, endDate } = params;
+    const { hospitalCode, fieldCode, provinceCode, districtCode, startDate, endDate } = params;
     
     try {
       let url = '/doctors';
@@ -40,7 +60,7 @@ const AppointmentService = {
       
       // Add query parameters for filtering if needed
       const queryParams = new URLSearchParams();
-      if (cityCode) queryParams.append('provinceCode', cityCode);
+      if (provinceCode) queryParams.append('provinceCode', provinceCode);
       if (districtCode) queryParams.append('districtCode', districtCode);
       if (fieldCode) queryParams.append('fieldCode', fieldCode);
       if (startDate) queryParams.append('startDate', startDate);
@@ -75,6 +95,11 @@ const AppointmentService = {
     }
   },
   
+  // Get all doctors  
+  getAllDoctors: async () => {
+    return await apiClient.get('/doctors');
+  },
+  
   // Get doctor by ID
   getDoctor: async (doctorId) => {
     return await apiClient.get(`/doctor/${doctorId}`);
@@ -83,6 +108,61 @@ const AppointmentService = {
   // Get doctor's available time slots
   getDoctorTimeSlots: async (doctorId, date) => {
     return await apiClient.get(`/doctor/${doctorId}/timeslots?date=${date}`);
+  },
+  
+  // Check if user can make a new appointment (weekly limit validation)
+  checkUserAppointmentLimit: async (userCode) => {
+    try {
+      console.log(`Checking appointment limit for user ${userCode}`);
+      
+      if (!userCode) {
+        throw new Error('User ID not found. Please login again.');
+      }
+      
+      // Get user's appointments from the last 7 days
+      const response = await apiClient.get(`/user/${userCode}/appointments`);
+      
+      if (!Array.isArray(response.data)) {
+        console.log('No appointments found or invalid response format');
+        return { canBook: true, appointmentCount: 0, message: '' };
+      }
+      
+      // Filter appointments from the last 7 days
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+      
+      const recentAppointments = response.data.filter(appointment => {
+        if (!appointment.createdAt) return false;
+        const createdDate = new Date(appointment.createdAt);
+        return createdDate >= oneWeekAgo;
+      });
+      
+      const appointmentCount = recentAppointments.length;
+      console.log(`User has ${appointmentCount} appointments in the last 7 days`);
+      
+      if (appointmentCount >= 3) {
+        return { 
+          canBook: false, 
+          appointmentCount, 
+          message: 'Haftalık randevu sınırına ulaştınız (3 randevu). Yeni randevu alabilmek için bir hafta beklemeniz gerekmektedir.' 
+        };
+      }
+      
+      return { 
+        canBook: true, 
+        appointmentCount, 
+        message: `Bu hafta ${appointmentCount}/3 randevu kullandınız.` 
+      };
+      
+    } catch (error) {
+      console.error('Error checking appointment limit:', error);
+      // In case of error, allow booking but warn user
+      return { 
+        canBook: true, 
+        appointmentCount: 0, 
+        message: 'Randevu sınırı kontrol edilemedi.' 
+      };
+    }
   },
   
   // Create a new appointment
@@ -94,6 +174,12 @@ const AppointmentService = {
     const userCode = localStorage.getItem('userId');
     if (!userCode) {
       throw new Error('User ID not found. Please login again.');
+    }
+    
+    // Check appointment limit before proceeding
+    const limitCheck = await AppointmentService.checkUserAppointmentLimit(userCode);
+    if (!limitCheck.canBook) {
+      throw new Error(limitCheck.message);
     }
     
     // Get selected time from the slot
@@ -111,7 +197,20 @@ const AppointmentService = {
     
     console.log("Formatted appointment data:", formattedAppointment);
     
-    return await apiClient.post('/appointment', formattedAppointment);
+    try {
+      const response = await apiClient.post('/appointment', formattedAppointment);
+      console.log("Appointment created successfully:", response);
+      return response;
+    } catch (error) {
+      // Handle specific error cases
+      if (error.response && error.response.data) {
+        const errorMessage = error.response.data;
+        if (typeof errorMessage === 'string' && errorMessage.includes('appointment limit exceeded')) {
+          throw new Error('Haftalık randevu sınırına ulaştınız (3 randevu). Yeni randevu alabilmek için bir hafta beklemeniz gerekmektedir.');
+        }
+      }
+      throw error;
+    }
   },
   
   // Get user's appointments
@@ -291,6 +390,12 @@ const AppointmentService = {
       }
       throw error;
     }
+  },
+  
+  getDoctorAppointments: async () => {
+    // This would be used for doctor-specific appointment viewing
+    // Implementation depends on how doctor authentication is handled
+    return await apiClient.get('/doctor/appointments');
   }
 };
 

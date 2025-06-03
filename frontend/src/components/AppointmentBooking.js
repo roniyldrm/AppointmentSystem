@@ -59,6 +59,10 @@ const AppointmentBooking = () => {
   const [hospitalEnabled, setHospitalEnabled] = useState(false);
   const [doctorEnabled, setDoctorEnabled] = useState(false);
   const [searchEnabled, setSearchEnabled] = useState(false);
+  
+  // Appointment limit state
+  const [appointmentLimit, setAppointmentLimit] = useState(null);
+  const [limitLoading, setLimitLoading] = useState(false);
 
   // Check authentication on load
   useEffect(() => {
@@ -71,6 +75,7 @@ const AppointmentBooking = () => {
     
     // Fetch cities when component loads
     fetchCities();
+    checkAppointmentLimit();
   }, [navigate]);
 
   const fetchCities = async () => {
@@ -322,7 +327,7 @@ const AppointmentBooking = () => {
       setError("");
       
       const params = {
-        cityCode: selectedCity,
+        provinceCode: selectedCity,
         districtCode: selectedDistrict,
         fieldCode: selectedField,
         hospitalCode: selectedHospital
@@ -330,6 +335,8 @@ const AppointmentBooking = () => {
       
       if (startDate) params.startDate = format(new Date(startDate), "yyyy-MM-dd");
       if (endDate) params.endDate = format(new Date(endDate), "yyyy-MM-dd");
+      
+      console.log("Search params being sent:", params);
       
       const response = await AppointmentService.getDoctors(params);
       console.log("Doctors search response:", response.data);
@@ -362,6 +369,31 @@ const AppointmentBooking = () => {
     return fieldNameMap[fieldCode] || `Field ${fieldCode}`;
   };
 
+  // Check user's appointment limit
+  const checkAppointmentLimit = async () => {
+    try {
+      setLimitLoading(true);
+      const userCode = localStorage.getItem('userId');
+      if (!userCode) {
+        console.warn('No user ID found for appointment limit check');
+        return;
+      }
+      
+      const limitInfo = await AppointmentService.checkUserAppointmentLimit(userCode);
+      setAppointmentLimit(limitInfo);
+      console.log('Appointment limit info:', limitInfo);
+    } catch (error) {
+      console.error('Error checking appointment limit:', error);
+      setAppointmentLimit({ 
+        canBook: true, 
+        appointmentCount: 0, 
+        message: 'Randevu sınırı kontrol edilemedi.' 
+      });
+    } finally {
+      setLimitLoading(false);
+    }
+  };
+
   return (
     <div className="app-container">
       <div className="card">
@@ -384,6 +416,38 @@ const AppointmentBooking = () => {
                 <div className="ml-3">
                   <p className="text-sm font-medium">{error}</p>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Appointment Limit Info */}
+          {appointmentLimit && (
+            <div className={`px-4 py-3 rounded-lg mb-4 ${
+              appointmentLimit.canBook 
+                ? 'bg-blue-50 border border-blue-200 text-blue-700' 
+                : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+            }`}>
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <i className={`fas ${appointmentLimit.canBook ? 'fa-info-circle' : 'fa-exclamation-triangle'} ${
+                    appointmentLimit.canBook ? 'text-blue-400' : 'text-yellow-400'
+                  }`}></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">{appointmentLimit.message}</p>
+                  {!appointmentLimit.canBook && (
+                    <p className="text-xs mt-1">Randevu almaya devam edemezsiniz. Eski randevularınızdan birinin üzerinden 1 hafta geçmesini bekleyin.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {limitLoading && (
+            <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg mb-4">
+              <div className="flex">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>
+                <span className="text-gray-600 text-sm">Randevu sınırı kontrol ediliyor...</span>
               </div>
             </div>
           )}

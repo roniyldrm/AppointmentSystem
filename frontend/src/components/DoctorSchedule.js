@@ -29,6 +29,8 @@ const DoctorSchedule = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState({start: null, end: null});
+  const [appointmentLimit, setAppointmentLimit] = useState(null);
+  const [limitLoading, setLimitLoading] = useState(false);
   
   // Calculate date options based on date range or default to 7 days
   const dateOptions = React.useMemo(() => {
@@ -60,6 +62,31 @@ const DoctorSchedule = () => {
     });
   }, [dateRange]);
   
+  // Check user's appointment limit
+  const checkAppointmentLimit = async () => {
+    try {
+      setLimitLoading(true);
+      const userCode = localStorage.getItem('userId');
+      if (!userCode) {
+        console.warn('No user ID found for appointment limit check');
+        return;
+      }
+      
+      const limitInfo = await AppointmentService.checkUserAppointmentLimit(userCode);
+      setAppointmentLimit(limitInfo);
+      console.log('Appointment limit info:', limitInfo);
+    } catch (error) {
+      console.error('Error checking appointment limit:', error);
+      setAppointmentLimit({ 
+        canBook: true, 
+        appointmentCount: 0, 
+        message: 'Randevu sınırı kontrol edilemedi.' 
+      });
+    } finally {
+      setLimitLoading(false);
+    }
+  };
+  
   // Fetch doctor information on component mount
   useEffect(() => {
     const fetchDoctor = async () => {
@@ -68,14 +95,17 @@ const DoctorSchedule = () => {
         const response = await AppointmentService.getDoctor(doctorId);
         setDoctor(response.data);
       } catch (err) {
-        setError('Failed to load doctor information. Please try again later.');
+        setError('Doktor bilgileri yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
         console.error('Error fetching doctor:', err);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchDoctor();
+    if (doctorId) {
+      fetchDoctor();
+      checkAppointmentLimit(); // Check appointment limit when component loads
+    }
   }, [doctorId]);
   
   // Fetch time slots when date changes
@@ -231,6 +261,38 @@ const DoctorSchedule = () => {
           </div>
         )}
         
+        {/* Appointment Limit Info */}
+        {appointmentLimit && (
+          <div className={`px-4 py-3 rounded mb-4 ${
+            appointmentLimit.canBook 
+              ? 'bg-blue-50 border border-blue-200 text-blue-700' 
+              : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+          }`}>
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <i className={`fas ${appointmentLimit.canBook ? 'fa-info-circle' : 'fa-exclamation-triangle'} ${
+                  appointmentLimit.canBook ? 'text-blue-400' : 'text-yellow-400'
+                }`}></i>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium">{appointmentLimit.message}</p>
+                {!appointmentLimit.canBook && (
+                  <p className="text-xs mt-1">Bir sonraki randevu alabilmek için eski randevularınızdan birinin 1 hafta geçmesini bekleyin.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {limitLoading && (
+          <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded mb-4">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>
+              <span className="text-gray-600 text-sm">Randevu sınırı kontrol ediliyor...</span>
+            </div>
+          </div>
+        )}
+        
         {loading && !doctor ? (
           <div className="flex justify-center items-center h-40">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -321,12 +383,21 @@ const DoctorSchedule = () => {
                 
                 <div className="mt-6">
                   <button
-                    className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${(!selectedSlot || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline ${
+                      (!selectedSlot || loading || (appointmentLimit && !appointmentLimit.canBook)) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onClick={handleBookAppointment}
-                    disabled={!selectedSlot || loading}
+                    disabled={!selectedSlot || loading || (appointmentLimit && !appointmentLimit.canBook)}
                   >
-                    {loading ? 'Randevu Alınıyor...' : 'Randevu Al'}
+                    {loading ? 'Randevu Alınıyor...' : 
+                     (appointmentLimit && !appointmentLimit.canBook) ? 'Haftalık Limit Doldu' : 
+                     'Randevu Al'}
                   </button>
+                  {appointmentLimit && !appointmentLimit.canBook && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      Haftalık randevu sınırınız dolmuştur. Yeni randevu alabilmek için bekleyiniz.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

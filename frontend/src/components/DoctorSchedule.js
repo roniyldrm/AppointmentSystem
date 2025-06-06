@@ -134,7 +134,7 @@ const DoctorSchedule = () => {
           setTimeSlots(response.data);
         } else {
           console.error("Invalid response format:", response.data);
-          setError("No suitable time slot found. Please select another date.");
+          setError("No suitable time slot found for today. Please select another date.");
           setTimeSlots([]);
         }
         
@@ -316,7 +316,7 @@ const DoctorSchedule = () => {
               
               <div className="mt-4 md:mt-0">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="appointmentDate">
-                  Tarih Seç
+                  Select Date
                 </label>
                 <select
                   id="appointmentDate"

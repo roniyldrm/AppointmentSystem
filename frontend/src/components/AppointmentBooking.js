@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 
 // Field names mapping based on field codes
 const fieldNameMap = {
+  0: "Cardiology",
   1: "Internal Medicine",
   2: "Pediatrics",
   3: "Otolaryngology",
@@ -29,7 +30,6 @@ const fieldNameMap = {
   7: "General Surgery",
   8: "Dermatology",
   9: "Neurology",
-  10: "Cardiology"
 };
 
 const AppointmentBooking = () => {
@@ -50,8 +50,6 @@ const AppointmentBooking = () => {
   const [selectedField, setSelectedField] = useState("");
   const [selectedHospital, setSelectedHospital] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   
   // Enabled states for form fields (as per requirements)
   const [districtEnabled, setDistrictEnabled] = useState(false);
@@ -295,30 +293,15 @@ const AppointmentBooking = () => {
     const hospitalCode = e.target.value;
     setSelectedHospital(hospitalCode);
     
-    // Reset doctor selection
+    // Reset doctor selection when hospital changes
     setSelectedDoctor("");
     setDoctors([]);
     
-    // Enable doctor selection if hospital is selected
-    setDoctorEnabled(Boolean(hospitalCode));
-    
-    // Update search button state
-    checkSearchEnabled();
-  };
-  
-  const handleStartDateChange = (e) => {
-    setStartDate(e.target.value);
-    checkSearchEnabled();
-  };
-  
-  const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
     checkSearchEnabled();
   };
   
   const checkSearchEnabled = () => {
-    // Enable search if either city and field OR a hospital is selected
-    setSearchEnabled(Boolean((selectedCity && selectedField) || selectedHospital));
+    setSearchEnabled(Boolean(selectedCity));
   };
   
   const handleSearch = async () => {
@@ -332,9 +315,6 @@ const AppointmentBooking = () => {
         fieldCode: selectedField,
         hospitalCode: selectedHospital
       };
-      
-      if (startDate) params.startDate = format(new Date(startDate), "yyyy-MM-dd");
-      if (endDate) params.endDate = format(new Date(endDate), "yyyy-MM-dd");
       
       console.log("Search params being sent:", params);
       
@@ -537,31 +517,6 @@ const AppointmentBooking = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-              
-              {/* Date Range */}
-              <div className="form-group">
-                <label htmlFor="startDate" className="form-label">Start Date</label>
-                <input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={handleStartDateChange}
-                  className="form-input"
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="endDate" className="form-label">End Date</label>
-                <input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={handleEndDateChange}
-                  className="form-input"
-                  min={startDate || new Date().toISOString().split('T')[0]}
-                />
               </div>
             </div>
             

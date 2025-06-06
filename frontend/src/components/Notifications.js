@@ -134,8 +134,8 @@ const Notifications = () => {
           alignItems: 'center'
         }}
         onClick={toggleDropdown}
-        aria-label="Bildirimler"
-        title={connected ? 'Bildirimler' : 'Bildirim sistemi bağlantısı kurulamadı'}
+        aria-label="Notifications"
+        title={connected ? 'Notifications' : 'Notification system disconnected'}
       >
         <NotificationIcon />
       </button>
@@ -162,14 +162,14 @@ const Notifications = () => {
             borderBottom: '1px solid #E5E7EB',
             backgroundColor: '#F9FAFB'
           }}>
-            <h3 style={{ fontWeight: 600, color: '#111827', fontSize: '18px' }}>Bildirimler</h3>
+            <h3 style={{ fontWeight: 600, color: '#111827', fontSize: '18px' }}>Notifications</h3>
             <div style={{ display: 'flex', gap: '8px' }}>
               {unreadCount > 0 && (
                 <button 
                   style={{ fontSize: '12px', color: '#2563EB', fontWeight: 500 }}
                   onClick={markAllAsRead}
                 >
-                  Tümünü Okundu İşaretle
+                  Mark All as Read
                 </button>
               )}
               {notifications.length > 0 && (
@@ -177,7 +177,7 @@ const Notifications = () => {
                   style={{ fontSize: '12px', color: '#DC2626', fontWeight: 500 }}
                   onClick={clearNotifications}
                 >
-                  Temizle
+                  Clear
                 </button>
               )}
             </div>
@@ -199,7 +199,7 @@ const Notifications = () => {
               fontWeight: 500
             }}>
               <i className={`fas fa-circle mr-1 ${connected ? 'text-green-500' : 'text-red-500'}`} style={{ fontSize: '10px', marginRight: '4px' }}></i>
-              {connected ? 'Bildirim sistemi aktif' : 'Bildirim sistemi bağlantısı kesildi'}
+              {connected ? 'Notification system active' : 'Notification system disconnected'}
             </span>
             
             <button 
@@ -228,8 +228,8 @@ const Notifications = () => {
                 color: '#6B7280'
               }}>
                 <i className="fas fa-envelope-open" style={{ fontSize: '32px', marginBottom: '12px', color: '#D1D5DB' }}></i>
-                <p style={{ fontWeight: 500 }}>Bildiriminiz bulunmuyor</p>
-                <p style={{ fontSize: '14px', color: '#9CA3AF', marginTop: '4px' }}>Yeni bildirimler burada görünecek</p>
+                <p style={{ fontWeight: 500 }}>You have no notifications</p>
+                <p style={{ fontSize: '14px', color: '#9CA3AF', marginTop: '4px' }}>New notifications will appear here</p>
               </div>
             ) : (
               <ul style={{ borderTop: '1px solid #F3F4F6' }}>

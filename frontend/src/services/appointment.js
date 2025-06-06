@@ -144,14 +144,14 @@ const AppointmentService = {
         return { 
           canBook: false, 
           appointmentCount, 
-          message: 'Haftalık randevu sınırına ulaştınız (3 randevu). Yeni randevu alabilmek için bir hafta beklemeniz gerekmektedir.' 
+          message: 'Weekly appointment limit reached (3 appointments). You need to wait one week to book a new appointment.' 
         };
       }
       
       return { 
         canBook: true, 
         appointmentCount, 
-        message: `Bu hafta ${appointmentCount}/3 randevu kullandınız.` 
+        message: `You have used ${appointmentCount}/3 appointments this week.` 
       };
       
     } catch (error) {
@@ -160,7 +160,7 @@ const AppointmentService = {
       return { 
         canBook: true, 
         appointmentCount: 0, 
-        message: 'Randevu sınırı kontrol edilemedi.' 
+        message: 'Unable to check appointment limit.' 
       };
     }
   },
@@ -206,7 +206,7 @@ const AppointmentService = {
       if (error.response && error.response.data) {
         const errorMessage = error.response.data;
         if (typeof errorMessage === 'string' && errorMessage.includes('appointment limit exceeded')) {
-          throw new Error('Haftalık randevu sınırına ulaştınız (3 randevu). Yeni randevu alabilmek için bir hafta beklemeniz gerekmektedir.');
+          throw new Error('Weekly appointment limit reached (3 appointments). You need to wait one week to book a new appointment.');
         }
       }
       throw error;
@@ -335,16 +335,16 @@ const AppointmentService = {
                   } else if (doctor.field !== undefined) {
                     // Map field code to field name using the common mapping
                     const fieldNameMap = {
-                      1: "Dahiliye",
-                      2: "Çocuk Sağlığı ve Hastalıkları",
-                      3: "Kulak Burun Boğaz Hastalıkları",
-                      4: "Göz Hastalıkları",
-                      5: "Kadın Hastalıkları ve Doğum",
-                      6: "Ortopedi ve Travmatoloji",
-                      7: "Genel Cerrahi",
-                      8: "Deri ve Zührevi Hastalıkları",
-                      9: "Nöroloji",
-                      10: "Kardiyoloji"
+                      1: "Internal Medicine",
+                      2: "Pediatrics",
+                      3: "Otolaryngology",
+                      4: "Ophthalmology",
+                      5: "Gynecology and Obstetrics",
+                      6: "Orthopedics and Traumatology",
+                      7: "General Surgery",
+                      8: "Dermatology",
+                      9: "Neurology",
+                      10: "Cardiology"
                     };
                     appointmentWithDetails.fieldName = fieldNameMap[doctor.field] || `Field ${doctor.field}`;
                   }

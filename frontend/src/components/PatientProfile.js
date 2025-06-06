@@ -42,7 +42,7 @@ const PatientProfile = () => {
       }
       
       if (!userIdentifier) {
-        setError('Kullanıcı kimliği bulunamadı. Lütfen tekrar giriş yapın.');
+        setError('User identifier not found. Please log in again.');
         console.error('User identifier not found in any source. Current user:', currentUser);
         return;
       }
@@ -59,7 +59,7 @@ const PatientProfile = () => {
         setAppointments([]);
       }
     } catch (err) {
-      setError('Randevularınız yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+      setError('An error occurred while loading your appointments. Please try again later.');
       console.error('Error fetching appointments:', err);
       console.error('Error details:', err.response || err.message);
       setAppointments([]); // Ensure we have an empty array at minimum
@@ -166,19 +166,19 @@ const PatientProfile = () => {
   const getStatusBadge = (appointment) => {
     const status = appointment.status;
     let badgeClass = 'badge-blue';
-    let statusText = 'Planlandı';
+    let statusText = 'Scheduled';
     
     // If explicitly cancelled, show cancelled regardless of date
     if (status && status.toUpperCase() === 'CANCELLED') {
       badgeClass = 'badge-red';
-      statusText = 'İptal Edildi';
+      statusText = 'Cancelled';
       return <span className={`badge ${badgeClass}`}>{statusText}</span>;
     }
     
     // If explicitly completed, show completed
     if (status && status.toUpperCase() === 'COMPLETED') {
       badgeClass = 'badge-green';
-      statusText = 'Tamamlandı';
+      statusText = 'Completed';
       return <span className={`badge ${badgeClass}`}>{statusText}</span>;
     }
     
@@ -188,7 +188,7 @@ const PatientProfile = () => {
     if (!appointmentDate) {
       // If no date available, default to scheduled
       badgeClass = 'badge-blue';
-      statusText = 'Planlandı';
+      statusText = 'Scheduled';
       return <span className={`badge ${badgeClass}`}>{statusText}</span>;
     }
     
@@ -201,17 +201,17 @@ const PatientProfile = () => {
       if (apptDate < today) {
         // Past appointment that hasn't been explicitly cancelled should show as completed
         badgeClass = 'badge-green';
-        statusText = 'Tamamlandı';
+        statusText = 'Completed';
       } else {
         // Future appointment
         badgeClass = 'badge-blue';
-        statusText = 'Planlandı';
+        statusText = 'Scheduled';
       }
     } catch (e) {
       // If date parsing fails, default to scheduled
       console.warn('Failed to parse appointment date:', appointmentDate, e);
       badgeClass = 'badge-blue';
-      statusText = 'Planlandı';
+      statusText = 'Scheduled';
     }
     
     return <span className={`badge ${badgeClass}`}>{statusText}</span>;
@@ -222,16 +222,16 @@ const PatientProfile = () => {
     if (!fieldCode) return null;
     
     const fieldNameMap = {
-      1: "Dahiliye",
-      2: "Çocuk Sağlığı ve Hastalıkları",
-      3: "Kulak Burun Boğaz Hastalıkları",
-      4: "Göz Hastalıkları",
-      5: "Kadın Hastalıkları ve Doğum",
-      6: "Ortopedi ve Travmatoloji",
-      7: "Genel Cerrahi",
-      8: "Deri ve Zührevi Hastalıkları",
-      9: "Nöroloji",
-      10: "Kardiyoloji"
+      1: "Internal Medicine",
+      2: "Pediatrics",
+      3: "Otolaryngology",
+      4: "Ophthalmology",
+      5: "Gynecology and Obstetrics",
+      6: "Orthopedics and Traumatology",
+      7: "General Surgery",
+      8: "Dermatology",
+      9: "Neurology",
+      10: "Cardiology"
     };
     
     return fieldNameMap[fieldCode] || `Field ${fieldCode}`;
@@ -241,10 +241,10 @@ const PatientProfile = () => {
     <div className="app-container">
       <div className="card">
         <div className="card-header">
-          <h1 className="page-title">Randevularım</h1>
+          <h1 className="page-title">My Appointments</h1>
           {currentUser && (
             <div className="px-3 py-1 bg-blue-50 rounded-lg text-sm text-gray-700">
-              <span className="font-semibold mr-1">Hesap:</span> 
+              <span className="font-semibold mr-1">Account:</span> 
               {currentUser.username || currentUser.id}
             </div>
           )}
@@ -276,7 +276,7 @@ const PatientProfile = () => {
                 onClick={() => setActiveTab('upcoming')}
               >
                 <i className="fas fa-calendar-day mr-2"></i>
-                Yaklaşan Randevular
+                <span>Upcoming Appointments</span>
               </button>
               <button
                 className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -287,7 +287,7 @@ const PatientProfile = () => {
                 onClick={() => setActiveTab('past')}
               >
                 <i className="fas fa-history mr-2"></i>
-                Geçmiş Randevular
+                <span>Past Appointments</span>
               </button>
             </div>
           </div>
@@ -297,7 +297,7 @@ const PatientProfile = () => {
             <div className="flex justify-center items-center py-16">
               <div className="flex flex-col items-center">
                 <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-3"></div>
-                <p className="text-gray-500">Randevular yükleniyor...</p>
+                <p className="text-gray-500">Loading appointments...</p>
               </div>
             </div>
           ) : displayAppointments.length === 0 ? (
@@ -305,11 +305,11 @@ const PatientProfile = () => {
               <div className="mx-auto h-20 w-20 text-gray-400 mb-4">
                 <i className="fas fa-calendar-times text-5xl"></i>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">Randevu Bulunamadı</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No Appointments Found</h3>
               <p className="text-gray-500 mb-5">
                 {activeTab === 'upcoming'
-                  ? 'Yaklaşan randevunuz bulunmuyor. Yeni bir randevu almak ister misiniz?'
-                  : 'Geçmiş randevu kaydınız bulunmuyor.'}
+                  ? 'You have no upcoming appointments. Would you like to book a new appointment?'
+                  : 'You have no past appointment records.'}
               </p>
               {activeTab === 'upcoming' && (
                 <button
@@ -317,7 +317,7 @@ const PatientProfile = () => {
                   className="btn btn-primary"
                 >
                   <i className="fas fa-calendar-plus mr-2"></i>
-                  Randevu Al
+                  Book Appointment
                 </button>
               )}
             </div>
@@ -326,11 +326,11 @@ const PatientProfile = () => {
               <table className="table-modern">
                 <thead>
                   <tr>
-                    <th>Doktor</th>
-                    <th>Hastane / Alan</th>
-                    <th>Tarih & Saat</th>
-                    <th>Durum</th>
-                    {activeTab === 'upcoming' && <th className="text-right">İşlemler</th>}
+                    <th>Doctor</th>
+                    <th>Hospital / Specialty</th>
+                    <th>Date & Time</th>
+                    <th>Status</th>
+                    {activeTab === 'upcoming' && <th className="text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -347,7 +347,7 @@ const PatientProfile = () => {
                                 {appointment.doctorLastName || appointment.doctor?.lastName || ''}
                               </>
                             ) : (
-                              'Doktor bilgisi bulunamadı'
+                              'Doctor information not found'
                             )}
                           </div>
                         </div>
@@ -357,20 +357,20 @@ const PatientProfile = () => {
                         <div className="flex flex-col">
                           <div className="text-sm font-medium text-gray-900">
                             <i className="fas fa-hospital text-gray-700 mr-1"></i>
-                            {appointment.hospitalName || appointment.hospital?.hospitalName || 'Belirtilmemiş'}
+                            {appointment.hospitalName || appointment.hospital?.hospitalName || 'Not specified'}
                           </div>
                           
                           {(appointment.fieldName || appointment.doctor?.fieldName || appointment.doctor?.field) && (
                             <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full inline-block mt-1 font-medium">
                               <i className="fas fa-stethoscope mr-1"></i>
-                              {appointment.fieldName || appointment.doctor?.fieldName || getFieldNameFromCode(appointment.doctor?.field) || 'Genel'}
+                              {appointment.fieldName || appointment.doctor?.fieldName || getFieldNameFromCode(appointment.doctor?.field) || 'General'}
                             </div>
                           )}
                           
                           {(!appointment.fieldName && !appointment.doctor?.fieldName && !appointment.doctor?.field) && (
                             <div className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full inline-block mt-1 font-medium">
                               <i className="fas fa-stethoscope mr-1"></i>
-                              Belirtilmemiş
+                              Not specified
                             </div>
                           )}
                         </div>
@@ -407,12 +407,12 @@ const PatientProfile = () => {
                               {cancellingId === (appointment.appointmentId || appointment.appointmentCode) ? (
                                 <span className="flex items-center">
                                   <i className="fas fa-circle-notch fa-spin mr-1"></i>
-                                  İptal Ediliyor...
+                                  <span>Cancelling...</span>
                                 </span>
                               ) : (
                                 <span className="flex items-center">
                                   <i className="fas fa-times-circle mr-1"></i>
-                                  İptal Et
+                                  <span>Cancel</span>
                                 </span>
                               )}
                             </button>
@@ -433,7 +433,7 @@ const PatientProfile = () => {
             className="btn btn-outline"
           >
             <i className="fas fa-arrow-left mr-1"></i>
-            Ana Sayfa
+            Home
           </button>
           
           {activeTab === 'upcoming' && (
@@ -442,7 +442,7 @@ const PatientProfile = () => {
               className="btn btn-primary"
             >
               <i className="fas fa-calendar-plus mr-1"></i>
-              Yeni Randevu
+              New Appointment
             </button>
           )}
         </div>

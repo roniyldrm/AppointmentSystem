@@ -26,11 +26,11 @@ const Register = () => {
 
   const validateForm = () => {
     if (userData.password !== userData.confirmPassword) {
-      setError('Şifreler eşleşmiyor');
+      setError('Passwords do not match');
       return false;
     }
     if (userData.password.length < 6) {
-      setError('Şifre en az 6 karakter uzunluğunda olmalıdır');
+      setError('Password must be at least 6 characters long');
       return false;
     }
     return true;
@@ -52,14 +52,14 @@ const Register = () => {
       // Call register from AuthContext
       await register(dataToSubmit);
       
-      setSuccess('Kayıt işlemi başarılı! Şimdi giriş yapabilirsiniz.');
+      setSuccess('Registration successful! You can now sign in.');
       
       // Redirect to login after a short delay
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Kayıt işlemi başarısız. Lütfen tekrar deneyin.');
+      setError(err.response?.data?.message || 'Registration failed. Please try again.');
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
@@ -69,7 +69,7 @@ const Register = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 py-8">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-blue-600 mb-6">Hesap Oluştur</h1>
+        <h1 className="text-2xl font-bold text-center text-blue-600 mb-6">Create Account</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -86,7 +86,7 @@ const Register = () => {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-              Kullanıcı Adı*
+              Username*
             </label>
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -95,7 +95,7 @@ const Register = () => {
               name="username"
               value={userData.username}
               onChange={handleChange}
-              placeholder="Kullanıcı Adı"
+              placeholder="Username"
               required
               disabled={loading}
             />
@@ -104,7 +104,7 @@ const Register = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="firstName">
-                Ad*
+                First Name*
               </label>
               <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -113,7 +113,7 @@ const Register = () => {
                 name="firstName"
                 value={userData.firstName}
                 onChange={handleChange}
-                placeholder="Adınız"
+                placeholder="Your first name"
                 required
                 disabled={loading}
               />
@@ -121,7 +121,7 @@ const Register = () => {
             
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lastName">
-                Soyad*
+                Last Name*
               </label>
               <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -130,7 +130,7 @@ const Register = () => {
                 name="lastName"
                 value={userData.lastName}
                 onChange={handleChange}
-                placeholder="Soyadınız"
+                placeholder="Your last name"
                 required
                 disabled={loading}
               />
@@ -139,7 +139,7 @@ const Register = () => {
           
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-              E-posta*
+              Email*
             </label>
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -148,7 +148,7 @@ const Register = () => {
               name="email"
               value={userData.email}
               onChange={handleChange}
-              placeholder="E-posta Adresiniz"
+              placeholder="Your Email Address"
               required
               disabled={loading}
             />
@@ -156,7 +156,7 @@ const Register = () => {
           
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phone">
-              Telefon Numarası
+              Phone Number
             </label>
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -165,14 +165,14 @@ const Register = () => {
               name="phone"
               value={userData.phone}
               onChange={handleChange}
-              placeholder="Telefon Numaranız"
+              placeholder="Your Phone Number"
               disabled={loading}
             />
           </div>
           
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              Şifre*
+              Password*
             </label>
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -181,7 +181,7 @@ const Register = () => {
               name="password"
               value={userData.password}
               onChange={handleChange}
-              placeholder="Şifre"
+              placeholder="Password"
               required
               disabled={loading}
             />
@@ -189,7 +189,7 @@ const Register = () => {
           
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirmPassword">
-              Şifre Tekrarı*
+              Confirm Password*
             </label>
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -198,7 +198,7 @@ const Register = () => {
               name="confirmPassword"
               value={userData.confirmPassword}
               onChange={handleChange}
-              placeholder="Şifre Tekrarı"
+              placeholder="Confirm Password"
               required
               disabled={loading}
             />
@@ -210,13 +210,13 @@ const Register = () => {
               type="submit"
               disabled={loading}
             >
-              {loading ? 'Kaydediliyor...' : 'Kayıt Ol'}
+              {loading ? 'Registering...' : 'Register'}
             </button>
           </div>
           
           <div className="text-center mt-4">
             <Link to="/login" className="text-blue-600 hover:text-blue-800 text-sm">
-              Zaten hesabınız var mı? Giriş yapın
+              Already have an account? Sign in
             </Link>
           </div>
         </form>

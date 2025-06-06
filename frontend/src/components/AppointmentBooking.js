@@ -20,16 +20,16 @@ import { format } from 'date-fns';
 
 // Field names mapping based on field codes
 const fieldNameMap = {
-  1: "Dahiliye",
-  2: "Çocuk Sağlığı ve Hastalıkları",
-  3: "Kulak Burun Boğaz Hastalıkları",
-  4: "Göz Hastalıkları",
-  5: "Kadın Hastalıkları ve Doğum",
-  6: "Ortopedi ve Travmatoloji",
-  7: "Genel Cerrahi",
-  8: "Deri ve Zührevi Hastalıkları",
-  9: "Nöroloji",
-  10: "Kardiyoloji"
+  1: "Internal Medicine",
+  2: "Pediatrics",
+  3: "Otolaryngology",
+  4: "Ophthalmology",
+  5: "Gynecology and Obstetrics",
+  6: "Orthopedics and Traumatology",
+  7: "General Surgery",
+  8: "Dermatology",
+  9: "Neurology",
+  10: "Cardiology"
 };
 
 const AppointmentBooking = () => {
@@ -387,7 +387,7 @@ const AppointmentBooking = () => {
       setAppointmentLimit({ 
         canBook: true, 
         appointmentCount: 0, 
-        message: 'Randevu sınırı kontrol edilemedi.' 
+        message: 'Unable to check appointment limit.' 
       });
     } finally {
       setLimitLoading(false);
@@ -398,7 +398,7 @@ const AppointmentBooking = () => {
     <div className="app-container">
       <div className="card">
         <div className="card-header">
-          <h1 className="page-title">Randevu Al</h1>
+          <h1 className="page-title">Book Appointment</h1>
           {loading && (
             <span className="inline-block ml-3">
               <i className="fas fa-circle-notch fa-spin text-primary"></i>
@@ -436,7 +436,7 @@ const AppointmentBooking = () => {
                 <div className="ml-3">
                   <p className="text-sm font-medium">{appointmentLimit.message}</p>
                   {!appointmentLimit.canBook && (
-                    <p className="text-xs mt-1">Randevu almaya devam edemezsiniz. Eski randevularınızdan birinin üzerinden 1 hafta geçmesini bekleyin.</p>
+                    <p className="text-xs mt-1">You cannot continue booking appointments. Please wait for 1 week to pass from one of your old appointments.</p>
                   )}
                 </div>
               </div>
@@ -447,7 +447,7 @@ const AppointmentBooking = () => {
             <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg mb-4">
               <div className="flex">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>
-                <span className="text-gray-600 text-sm">Randevu sınırı kontrol ediliyor...</span>
+                <span className="text-gray-600 text-sm">Checking appointment limit...</span>
               </div>
             </div>
           )}
@@ -456,7 +456,7 @@ const AppointmentBooking = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* City Selection */}
               <div className="form-group">
-                <label htmlFor="city" className="form-label">Şehir <span className="text-red-500">*</span></label>
+                <label htmlFor="city" className="form-label">City <span className="text-red-500">*</span></label>
                 <select
                   id="city"
                   value={selectedCity}
@@ -464,7 +464,7 @@ const AppointmentBooking = () => {
                   className="form-select"
                   required
                 >
-                  <option value="">Şehir Seçiniz</option>
+                  <option value="">Select City</option>
                   {cities.map((city) => (
                     <option key={city.code} value={city.code}>{city.name}</option>
                   ))}
@@ -473,7 +473,7 @@ const AppointmentBooking = () => {
               
               {/* District Selection */}
               <div className="form-group">
-                <label htmlFor="district" className="form-label">İlçe</label>
+                <label htmlFor="district" className="form-label">District</label>
                 <select
                   id="district"
                   value={selectedDistrict}
@@ -481,7 +481,7 @@ const AppointmentBooking = () => {
                   className="form-select"
                   disabled={!districtEnabled}
                 >
-                  <option value="">Tüm İlçeler</option>
+                  <option value="">All Districts</option>
                   {districts.map((district) => (
                     <option key={district.districtCode} value={district.districtCode}>
                       {district.districtName}
@@ -492,7 +492,7 @@ const AppointmentBooking = () => {
               
               {/* Field Selection */}
               <div className="form-group">
-                <label htmlFor="field" className="form-label">Uzmanlık Alanı</label>
+                <label htmlFor="field" className="form-label">Specialty</label>
                 <select
                   id="field"
                   value={selectedField}
@@ -500,7 +500,7 @@ const AppointmentBooking = () => {
                   className="form-select"
                   disabled={!fieldEnabled}
                 >
-                  <option value="">Uzmanlık Alanı Seçiniz</option>
+                  <option value="">Select Specialty</option>
                   {Array.isArray(fields) && fields.map((field) => {
                     // If fields are just numbers, fetch the names from the fieldMap
                     if (typeof field === 'number') {
@@ -522,7 +522,7 @@ const AppointmentBooking = () => {
               
               {/* Hospital Selection */}
               <div className="form-group">
-                <label htmlFor="hospital" className="form-label">Hastane</label>
+                <label htmlFor="hospital" className="form-label">Hospital</label>
                 <select
                   id="hospital"
                   value={selectedHospital}
@@ -530,7 +530,7 @@ const AppointmentBooking = () => {
                   className="form-select"
                   disabled={!hospitalEnabled}
                 >
-                  <option value="">Tüm Hastaneler</option>
+                  <option value="">All Hospitals</option>
                   {hospitals.map((hospital) => (
                     <option key={hospital.hospitalCode} value={hospital.hospitalCode}>
                       {hospital.hospitalName}
@@ -541,7 +541,7 @@ const AppointmentBooking = () => {
               
               {/* Date Range */}
               <div className="form-group">
-                <label htmlFor="startDate" className="form-label">Başlangıç Tarihi</label>
+                <label htmlFor="startDate" className="form-label">Start Date</label>
                 <input
                   id="startDate"
                   type="date"
@@ -553,7 +553,7 @@ const AppointmentBooking = () => {
               </div>
               
               <div className="form-group">
-                <label htmlFor="endDate" className="form-label">Bitiş Tarihi</label>
+                <label htmlFor="endDate" className="form-label">End Date</label>
                 <input
                   id="endDate"
                   type="date"
@@ -576,12 +576,12 @@ const AppointmentBooking = () => {
                 {loading ? (
                   <>
                     <i className="fas fa-circle-notch fa-spin"></i>
-                    <span>Aranıyor...</span>
+                    <span>Searching...</span>
                   </>
                 ) : (
                   <>
                     <i className="fas fa-search"></i>
-                    <span>Doktor Ara</span>
+                    <span>Search Doctors</span>
                   </>
                 )}
               </button>
@@ -595,8 +595,8 @@ const AppointmentBooking = () => {
         <div className="mt-8">
           <h2 className="page-subtitle flex items-center mb-6">
             <i className="fas fa-user-md text-primary mr-2"></i>
-            <span>Uygun Doktorlar</span>
-            <span className="ml-2 badge badge-blue">{doctors.length} doktor bulundu</span>
+            <span>Available Doctors</span>
+            <span className="ml-2 badge badge-blue">{doctors.length} doctors found</span>
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -627,7 +627,7 @@ const AppointmentBooking = () => {
                     className="btn btn-primary w-full"
                   >
                     <i className="fas fa-calendar-check"></i>
-                    <span>Randevu Al</span>
+                    <span>Book Appointment</span>
                   </button>
                 </div>
               </div>

@@ -8,22 +8,22 @@ const Unauthorized = () => {
         <i className="fas fa-exclamation-circle"></i>
         ⚠️
       </div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">Erişim Reddedildi</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">Access Denied</h1>
       <p className="text-xl text-gray-600 mb-8 text-center">
-        Bu sayfaya erişim izniniz bulunmamaktadır.
+        You do not have permission to access this page.
       </p>
       <div className="flex space-x-4">
         <Link 
           to="/" 
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline"
         >
-          Ana Sayfa
+          Home
         </Link>
         <Link 
           to="/login" 
           className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline"
         >
-          Giriş Yap
+          Sign In
         </Link>
       </div>
     </div>

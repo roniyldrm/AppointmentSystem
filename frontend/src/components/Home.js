@@ -34,9 +34,9 @@ const Home = () => {
                   </span>
                 </div>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                  Modern Sağlık Hizmetleri İçin 
+                  Modern Healthcare Services for 
                   <span className="relative inline-block text-blue-100 ml-2">
-                    Dijital Çözüm
+                    Digital Solutions
                     <svg className="absolute -bottom-1 left-0 w-full" xmlns="http://www.w3.org/2000/svg" height="8" viewBox="0 0 200 8">
                       <path fill="none" stroke="#93c5fd" strokeWidth="5" strokeLinecap="round" d="M0 5c30.928-4.096 68.2-6.732 88 0 18.802 6.732 40.705 3.951 60 0 2.4-.35 52-.35 52-.35" 
                             className="animate-dashOffset" style={{strokeDasharray: 250, strokeDashoffset: 250}}></path>
@@ -44,21 +44,19 @@ const Home = () => {
                   </span>
                 </h1>
                 <p className="text-xl md:text-2xl font-light mb-8 text-blue-100">
-                  Hızlı ve kolay randevu alma, doktor seçme ve sağlık takibi için 
-                  <span className="logo-text mx-2">e<span className="text-blue-200">-</span>pulse</span> 
-                  randevu sistemini kullanın.
+                  Use the e<span className="text-blue-200">-</span>pulse appointment system for quick and easy appointment booking, doctor selection and health tracking.
                 </p>
                 {isAuthenticated && isPatient ? (
                   <div className="flex flex-wrap gap-4">
                     <Link to="/appointment" className="group relative inline-flex items-center px-8 py-3 overflow-hidden text-lg font-medium text-primary bg-white rounded-full hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 shadow-md transform transition-all duration-300 hover:scale-105">
                       <span className="absolute left-0 top-0 h-full w-0 bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300 group-hover:w-full opacity-10"></span>
                       <i className="fas fa-calendar-plus mr-2 text-blue-600"></i>
-                      <span className="relative">Randevu Al</span>
+                      <span className="relative">Book Appointment</span>
                     </Link>
                     <Link to="/profile" className="group relative inline-flex items-center px-8 py-3 overflow-hidden text-lg font-medium text-white bg-blue-800 rounded-full hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-800 shadow-md transform transition-all duration-300 hover:scale-105">
                       <span className="absolute left-0 top-0 h-full w-0 bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300 group-hover:w-full opacity-10"></span>
                       <i className="fas fa-user-circle mr-2"></i>
-                      <span className="relative">Profilim</span>
+                      <span className="relative">My Profile</span>
                     </Link>
                   </div>
                 ) : !isAuthenticated && (
@@ -66,12 +64,12 @@ const Home = () => {
                     <Link to="/login" className="group relative inline-flex items-center px-8 py-3 overflow-hidden text-lg font-medium text-primary bg-white rounded-full hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 shadow-md transform transition-all duration-300 hover:scale-105">
                       <span className="absolute left-0 top-0 h-full w-0 bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300 group-hover:w-full opacity-10"></span>
                       <i className="fas fa-sign-in-alt mr-2 text-blue-600"></i>
-                      <span className="relative">Giriş Yap</span>
+                      <span className="relative">Sign In</span>
                     </Link>
                     <Link to="/register" className="group relative inline-flex items-center px-8 py-3 overflow-hidden text-lg font-medium text-white bg-blue-800 rounded-full hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-800 shadow-md transform transition-all duration-300 hover:scale-105">
                       <span className="absolute left-0 top-0 h-full w-0 bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300 group-hover:w-full opacity-10"></span>
                       <i className="fas fa-user-plus mr-2"></i>
-                      <span className="relative">Kayıt Ol</span>
+                      <span className="relative">Register</span>
                     </Link>
                   </div>
                 )}
@@ -89,13 +87,13 @@ const Home = () => {
                   <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-gradient-to-br from-green-500 to-green-400 rounded-lg shadow-xl flex items-center justify-center p-6 transform transition-all duration-500 hover:scale-105 hover:rotate-3">
                     <div className="text-center text-white">
                       <div className="text-4xl font-bold mb-1">24/7</div>
-                      <div className="text-sm uppercase tracking-wider">Online Randevu</div>
+                      <div className="text-sm uppercase tracking-wider">Online Appointments</div>
                     </div>
                   </div>
                   <div className="absolute -top-4 -right-4 w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center p-4 transform transition-all duration-500 hover:scale-105 hover:-rotate-6">
                     <div className="text-center text-white">
                       <i className="fas fa-heartbeat text-3xl mb-1"></i>
-                      <div className="text-xs uppercase tracking-wider mt-1">Sağlığınız Önceliğimiz</div>
+                      <div className="text-xs uppercase tracking-wider mt-1">Your Health is Our Priority</div>
                     </div>
                   </div>
                 </div>
@@ -120,10 +118,10 @@ const Home = () => {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16">
-            <span className="inline-block px-4 py-1 rounded-full text-blue-600 bg-blue-100 mb-4 font-medium animate-pulse">Neden Biz?</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">e-pulse ile Sağlık Hizmetlerine<br/>Modern Bir Bakış</h2>
+            <span className="inline-block px-4 py-1 rounded-full text-blue-600 bg-blue-100 mb-4 font-medium animate-pulse">Why Us?</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">A Modern Perspective on Healthcare Services<br/>with e-pulse</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Modern teknoloji ile desteklenen sağlık hizmetlerimiz, konfor ve kolaylık sağlar
+              Our healthcare services supported by modern technology provide comfort and convenience
             </p>
           </div>
 
@@ -133,12 +131,12 @@ const Home = () => {
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-6 relative z-10 group-hover:bg-blue-600 group-hover:text-white transform transition-all duration-300">
                 <i className="fas fa-user-md text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Uzman Doktorlar</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Expert Doctors</h3>
               <p className="text-gray-600 mb-6">
-                Alanında uzman doktorlarımızla kaliteli sağlık hizmeti alın. İhtiyacınıza uygun doktoru kolayca bulun.
+                Get quality healthcare with our specialist doctors. Easily find the doctor that suits your needs.
               </p>
               <div className="flex items-center text-blue-600 font-medium group-hover:text-blue-700">
-                <span>Doktorlarımız</span>
+                <span>Our Doctors</span>
                 <i className="fas fa-arrow-right ml-2 transform transition-transform duration-300 group-hover:translate-x-2"></i>
               </div>
             </div>
@@ -148,12 +146,12 @@ const Home = () => {
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-6 relative z-10 group-hover:bg-green-600 group-hover:text-white transform transition-all duration-300">
                 <i className="fas fa-calendar-check text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Kolay Randevu</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Easy Appointments</h3>
               <p className="text-gray-600 mb-6">
-                Birkaç tıklama ile hızlıca randevu alın. Size en uygun gün ve saati seçerek zamanınızı etkin kullanın.
+                Book an appointment quickly with just a few clicks. Choose the most suitable day and time and use your time effectively.
               </p>
               <div className="flex items-center text-green-600 font-medium group-hover:text-green-700">
-                <span>Nasıl Çalışır</span>
+                <span>How It Works</span>
                 <i className="fas fa-arrow-right ml-2 transform transition-transform duration-300 group-hover:translate-x-2"></i>
               </div>
             </div>
@@ -163,12 +161,12 @@ const Home = () => {
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 text-purple-600 mb-6 relative z-10 group-hover:bg-purple-600 group-hover:text-white transform transition-all duration-300">
                 <i className="fas fa-hospital text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Modern Tesisler</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 relative">Modern Facilities</h3>
               <p className="text-gray-600 mb-6">
-                En son teknoloji ile donatılmış tesislerimizde konforlu bir sağlık hizmeti deneyimi yaşayın.
+                Experience a comfortable healthcare service in our facilities equipped with the latest technology.
               </p>
               <div className="flex items-center text-purple-600 font-medium group-hover:text-purple-700">
-                <span>Tesislerimiz</span>
+                <span>Our Facilities</span>
                 <i className="fas fa-arrow-right ml-2 transform transition-transform duration-300 group-hover:translate-x-2"></i>
               </div>
             </div>
@@ -178,19 +176,19 @@ const Home = () => {
             <div className="inline-flex flex-wrap justify-center gap-3">
               <div className="flex items-center bg-white rounded-full px-6 py-3 shadow-md">
                 <i className="fas fa-check-circle text-green-500 mr-2"></i>
-                <span className="text-gray-700 font-medium">7/24 Destek</span>
+                <span className="text-gray-700 font-medium">24/7 Support</span>
               </div>
               <div className="flex items-center bg-white rounded-full px-6 py-3 shadow-md">
                 <i className="fas fa-check-circle text-green-500 mr-2"></i>
-                <span className="text-gray-700 font-medium">Online Ödemeler</span>
+                <span className="text-gray-700 font-medium">Online Payments</span>
               </div>
               <div className="flex items-center bg-white rounded-full px-6 py-3 shadow-md">
                 <i className="fas fa-check-circle text-green-500 mr-2"></i>
-                <span className="text-gray-700 font-medium">Tahlil Sonuçları</span>
+                <span className="text-gray-700 font-medium">Test Results</span>
               </div>
               <div className="flex items-center bg-white rounded-full px-6 py-3 shadow-md">
                 <i className="fas fa-check-circle text-green-500 mr-2"></i>
-                <span className="text-gray-700 font-medium">Ücretsiz İptal</span>
+                <span className="text-gray-700 font-medium">Free Cancellation</span>
               </div>
             </div>
           </div>
@@ -204,11 +202,11 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-20">
             <span className="inline-block px-4 py-1 rounded-full text-blue-600 bg-blue-100 mb-4 font-medium">
-              Basit Adımlar
+              Simple Steps
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Nasıl Çalışır?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">How Does It Work?</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Sadece üç adımda randevu alın
+              Book an appointment in just three steps
             </p>
           </div>
 
@@ -229,13 +227,13 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-8 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl w-full mt-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Hesap Oluşturun</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Create Account</h3>
                   <p className="text-gray-600 mb-6">
-                    Hızlı bir şekilde hesap oluşturun ve sisteme giriş yapın. Sadece temel bilgilerinizi vererek kayıt tamamlayın.
+                    Create an account quickly and log into the system. Complete registration by providing only your basic information.
                   </p>
                   {!isAuthenticated && (
                     <Link to="/register" className="inline-flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors">
-                      <span>Kayıt Ol</span>
+                      <span>Register</span>
                       <i className="fas fa-long-arrow-alt-right ml-2 group-hover:ml-3 transition-all"></i>
                     </Link>
                   )}
@@ -254,13 +252,13 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-8 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl w-full mt-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Doktor Seçin</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Choose Doctor</h3>
                   <p className="text-gray-600 mb-6">
-                    Uzmanlık alanı, hastane ve konum seçerek doktor arayın. İhtiyacınıza uygun doktoru kolayca bulun.
+                    Search for doctors by selecting specialty, hospital and location. Easily find the doctor that suits your needs.
                   </p>
                   {isAuthenticated && isPatient && (
                     <Link to="/appointment" className="inline-flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors">
-                      <span>Doktor Ara</span>
+                      <span>Search Doctors</span>
                       <i className="fas fa-long-arrow-alt-right ml-2 transition-all"></i>
                     </Link>
                   )}
@@ -279,13 +277,13 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-8 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl w-full mt-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Randevu Alın</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Book Appointment</h3>
                   <p className="text-gray-600 mb-6">
-                    Size uygun tarih ve saati seçerek randevunuzu tamamlayın. Randevu onayınız e-posta ve SMS ile bildirilir.
+                    Select a suitable date and time to complete your appointment. Your appointment confirmation will be notified by email and SMS.
                   </p>
                   {isAuthenticated && isPatient && (
                     <Link to="/profile" className="inline-flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors">
-                      <span>Randevularım</span>
+                      <span>My Appointments</span>
                       <i className="fas fa-long-arrow-alt-right ml-2 transition-all"></i>
                     </Link>
                   )}
@@ -296,7 +294,7 @@ const Home = () => {
           
           <div className="mt-20 text-center">
             <Link to={isAuthenticated ? "/appointment" : "/register"} className="inline-flex items-center px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-medium text-lg shadow-lg hover:shadow-xl transform transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
-              <span>{isAuthenticated ? "Randevu Al" : "Hemen Başla"}</span>
+              <span>{isAuthenticated ? "Book Appointment" : "Get Started Now"}</span>
               <i className="fas fa-arrow-right ml-3"></i>
             </Link>
           </div>
@@ -309,39 +307,39 @@ const Home = () => {
           <div className="bg-primary rounded-2xl shadow-xl overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <div className="p-10 lg:p-12 bg-gradient-to-br from-primary to-primary-dark text-white">
-                <h2 className="text-3xl font-bold mb-6">e-pulse İstatistikleri</h2>
+                <h2 className="text-3xl font-bold mb-6">e-pulse Statistics</h2>
                 <p className="text-xl font-light mb-8">
-                  Türkiye genelinde sağlık hizmeti verdiğimiz hastalarımız ve tıbbi ekibimiz.
+                  Our patients and medical team who we provide healthcare services throughout Turkey.
                 </p>
                 
                 <div className="grid grid-cols-2 gap-8">
                   <div>
                     <div className="text-4xl font-bold">10,000+</div>
-                    <div className="text-blue-100 mt-1">Hasta</div>
+                    <div className="text-blue-100 mt-1">Patients</div>
                   </div>
                   <div>
                     <div className="text-4xl font-bold">500+</div>
-                    <div className="text-blue-100 mt-1">Doktor</div>
+                    <div className="text-blue-100 mt-1">Doctors</div>
                   </div>
                   <div>
                     <div className="text-4xl font-bold">50+</div>
-                    <div className="text-blue-100 mt-1">Hastane</div>
+                    <div className="text-blue-100 mt-1">Hospitals</div>
                   </div>
                   <div>
                     <div className="text-4xl font-bold">20+</div>
-                    <div className="text-blue-100 mt-1">Şehir</div>
+                    <div className="text-blue-100 mt-1">Cities</div>
                   </div>
                 </div>
               </div>
               <div className="p-10 lg:p-12 bg-white flex items-center">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    "Sağlık hizmetine erişim hiç bu kadar kolay olmamıştı."
+                    "Accessing healthcare has never been this easy."
                   </h3>
                   <p className="text-gray-600 mb-8">
-                    e-pulse randevu sistemi sayesinde dakikalar içinde doktor randevusu alabiliyor, 
-                    tüm sağlık geçmişimi tek bir yerden kolayca takip edebiliyorum. 
-                    Artık sağlık hizmetlerine erişmek için saatlerce telefonlarda beklemek zorunda değilim.
+                    Thanks to the e-pulse appointment system, I can make a doctor's appointment in minutes, 
+                    and I can easily track my entire health history from one place. 
+                    I no longer have to wait on the phones for hours to access healthcare services.
                   </p>
                   <div className="flex items-center">
                     <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -364,26 +362,26 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Sağlığınız İçin Hemen Randevu Alın
+              Book an Appointment Now for Your Health
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Size en yakın hastanede, alanında uzman doktorlarımızla tanışın
+              Meet our specialist doctors at the nearest hospital to you
             </p>
             
             {isAuthenticated && isPatient ? (
               <Link to="/appointment" className="btn btn-lg btn-primary">
                 <i className="fas fa-calendar-plus mr-2"></i>
-                Hemen Randevu Al
+                Book Appointment Now
               </Link>
             ) : !isAuthenticated && (
               <div className="space-x-4">
                 <Link to="/login" className="btn btn-lg btn-primary">
                   <i className="fas fa-sign-in-alt mr-2"></i>
-                  Giriş Yap
+                  Sign In
                 </Link>
                 <Link to="/register" className="btn btn-lg btn-outline">
                   <i className="fas fa-user-plus mr-2"></i>
-                  Kayıt Ol
+                  Register
                 </Link>
               </div>
             )}

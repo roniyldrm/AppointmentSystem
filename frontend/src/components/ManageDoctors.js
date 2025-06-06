@@ -19,6 +19,50 @@ const ManageDoctors = () => {
   const [activeDoctor, setActiveDoctor] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   
+  // Medical specialty translations
+  const translateSpecialty = (turkishName) => {
+    const specialtyMap = {
+      'Dahiliye': 'Internal Medicine',
+      'Genel Tıp': 'General Medicine',
+      'Çocuk Sağlığı ve Hastalıkları': 'Pediatrics',
+      'Pediatri': 'Pediatrics',
+      'Kulak Burun Boğaz Hastalıkları': 'Otolaryngology',
+      'Kulak Burun Boğaz': 'Otolaryngology',
+      'Göz Hastalıkları': 'Ophthalmology',
+      'Göz': 'Ophthalmology',
+      'Kadın Hastalıkları ve Doğum': 'Gynecology and Obstetrics',
+      'Jinekologi': 'Gynecology and Obstetrics',
+      'Ortopedi ve Travmatoloji': 'Orthopedics and Traumatology',
+      'Ortopedi': 'Orthopedics and Traumatology',
+      'Genel Cerrahi': 'General Surgery',
+      'Cerrahi': 'General Surgery',
+      'Deri ve Zührevi Hastalıkları': 'Dermatology',
+      'Dermatoloji': 'Dermatology',
+      'Nöroloji': 'Neurology',
+      'Kardiyoloji': 'Cardiology',
+      'Üroloji': 'Urology',
+      'Psikiyatri': 'Psychiatry',
+      'Anesteziyoloji': 'Anesthesiology',
+      'Radyoloji': 'Radiology',
+      'Patoloji': 'Pathology',
+      'Fizik Tedavi ve Rehabilitasyon': 'Physical Therapy and Rehabilitation',
+      'Enfeksiyon Hastalıkları': 'Infectious Diseases',
+      'Hematoloji': 'Hematology',
+      'Onkoloji': 'Oncology',
+      'Gastroenteroloji': 'Gastroenterology',
+      'Endokrinoloji': 'Endocrinology',
+      'Nefroloji': 'Nephrology',
+      'Göğüs Hastalıkları': 'Pulmonology',
+      'Romatologi': 'Rheumatology',
+      'Plastik Cerrahi': 'Plastic Surgery',
+      'Beyin Cerrahisi': 'Neurosurgery',
+      'Kalp Cerrahisi': 'Cardiac Surgery',
+      'Göğüs Cerrahisi': 'Thoracic Surgery'
+    };
+    
+    return specialtyMap[turkishName] || turkishName;
+  };
+  
   // Debounce the search to avoid too many API calls
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -222,7 +266,7 @@ const ManageDoctors = () => {
   return (
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Doktorları Yönet</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Manage Doctors</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -232,12 +276,12 @@ const ManageDoctors = () => {
         
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filtreler</h2>
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filters</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fieldCode">
-                Uzmanlık
+                Specialty
               </label>
               <select
                 id="fieldCode"
@@ -246,16 +290,16 @@ const ManageDoctors = () => {
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
-                <option value="">Tüm Uzmanlıklar</option>
+                <option value="">All Specialties</option>
                 {Array.isArray(fields) && fields.map(field => (
-                  <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
+                  <option key={field.fieldCode} value={field.fieldCode}>{translateSpecialty(field.fieldName)}</option>
                 ))}
               </select>
             </div>
             
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hospitalCode">
-                Hastane
+                Hospital
               </label>
               <select
                 id="hospitalCode"
@@ -264,7 +308,7 @@ const ManageDoctors = () => {
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
-                <option value="">Tüm Hastaneler</option>
+                <option value="">All Hospitals</option>
                 {Array.isArray(hospitals) && hospitals.map(hospital => (
                   <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                 ))}
@@ -273,13 +317,13 @@ const ManageDoctors = () => {
             
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="search">
-                Ara
+                Search
               </label>
               <input
                 id="search"
                 name="search"
                 type="text"
-                placeholder="İsme göre ara..."
+                placeholder="Search by name..."
                 value={filter.search}
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -292,13 +336,13 @@ const ManageDoctors = () => {
               onClick={handleResetFilter}
               className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
             >
-              Sıfırla
+              Reset
             </button>
             <button
               onClick={handleApplyFilter}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
-              Filtreleri Uygula
+              Apply Filters
             </button>
           </div>
         </div>
@@ -309,7 +353,7 @@ const ManageDoctors = () => {
             onClick={handleCreateDoctor}
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
           >
-            Yeni Doktor Ekle
+            Add New Doctor
           </button>
         </div>
         
@@ -321,7 +365,7 @@ const ManageDoctors = () => {
             </div>
           ) : doctors.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Kriterlere uygun doktor bulunamadı.</p>
+              <p className="text-gray-500">No doctors found matching the criteria.</p>
             </div>
           ) : (
             <>
@@ -330,19 +374,16 @@ const ManageDoctors = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İsim
+                        Name
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Uzmanlık
+                        Specialty
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hastane
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İletişim
+                        Hospital
                       </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İşlemler
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -355,31 +396,23 @@ const ManageDoctors = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{doctor.fieldName}</div>
+                          <div className="text-sm text-gray-900">{translateSpecialty(doctor.fieldName)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{doctor.hospitalName}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {doctor.email && (
-                            <div className="text-sm text-gray-900">{doctor.email}</div>
-                          )}
-                          {doctor.phone && (
-                            <div className="text-sm text-gray-500">{doctor.phone}</div>
-                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             onClick={() => handleEditDoctor(doctor)}
                             className="text-blue-600 hover:text-blue-900 mr-3"
                           >
-                            Düzenle
+                            Edit
                           </button>
                           <button
                             onClick={() => handleDeleteDoctor(doctor.doctorCode)}
                             className="text-red-600 hover:text-red-900"
                           >
-                            Sil
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -398,10 +431,10 @@ const ManageDoctors = () => {
                       page === 1 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Önceki
+                    Previous
                   </button>
                   <span className="text-sm text-gray-700">
-                    Sayfa {page} / {totalPages}
+                    Page {page} / {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
@@ -410,7 +443,7 @@ const ManageDoctors = () => {
                       page === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Sonraki
+                    Next
                   </button>
                 </div>
               </div>
@@ -424,12 +457,12 @@ const ManageDoctors = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Doktor Düzenle</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Doctor</h3>
               
               <form onSubmit={handleUpdateDoctor}>
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="doctorName">
-                    Doktor Adı*
+                    Doctor Name*
                   </label>
                   <input
                     id="doctorName"
@@ -437,14 +470,14 @@ const ManageDoctors = () => {
                     value={activeDoctor.doctorName || ''}
                     onChange={(e) => setActiveDoctor({...activeDoctor, doctorName: e.target.value})}
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Dr. Ahmet Yılmaz"
+                    placeholder="Dr. John Smith"
                     required
                   />
                 </div>
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                    E-posta
+                    Email
                   </label>
                   <input
                     id="email"
@@ -457,7 +490,7 @@ const ManageDoctors = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phone">
-                    Telefon
+                    Phone
                   </label>
                   <input
                     id="phone"
@@ -470,7 +503,7 @@ const ManageDoctors = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editFieldCode">
-                    Uzmanlık
+                    Specialty
                   </label>
                   <select
                     id="editFieldCode"
@@ -479,16 +512,16 @@ const ManageDoctors = () => {
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     required
                   >
-                    <option value="">Uzmanlık Seçin</option>
+                    <option value="">Select Specialty</option>
                     {Array.isArray(fields) && fields.map(field => (
-                      <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
+                      <option key={field.fieldCode} value={field.fieldCode}>{translateSpecialty(field.fieldName)}</option>
                     ))}
                   </select>
                 </div>
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editHospitalCode">
-                    Hastane
+                    Hospital
                   </label>
                   <select
                     id="editHospitalCode"
@@ -497,7 +530,7 @@ const ManageDoctors = () => {
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     required
                   >
-                    <option value="">Hastane Seçin</option>
+                    <option value="">Select Hospital</option>
                     {Array.isArray(hospitals) && hospitals.map(hospital => (
                       <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                     ))}
@@ -510,13 +543,13 @@ const ManageDoctors = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                     onClick={handleCloseModal}
                   >
-                    İptal
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    Güncelle
+                    Update
                   </button>
                 </div>
               </form>
@@ -530,12 +563,12 @@ const ManageDoctors = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Yeni Doktor Ekle</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Doctor</h3>
               
               <form onSubmit={handleSubmitCreate}>
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newDoctorName">
-                    Doktor Adı*
+                    Doctor Name*
                   </label>
                   <input
                     id="newDoctorName"
@@ -543,14 +576,14 @@ const ManageDoctors = () => {
                     value={activeDoctor.doctorName || ''}
                     onChange={(e) => setActiveDoctor({...activeDoctor, doctorName: e.target.value})}
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Dr. Ahmet Yılmaz"
+                    placeholder="Dr. John Smith"
                     required
                   />
                 </div>
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newEmail">
-                    E-posta
+                    Email
                   </label>
                   <input
                     id="newEmail"
@@ -563,7 +596,7 @@ const ManageDoctors = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newPhone">
-                    Telefon
+                    Phone
                   </label>
                   <input
                     id="newPhone"
@@ -576,7 +609,7 @@ const ManageDoctors = () => {
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newFieldCode">
-                    Uzmanlık*
+                    Specialty*
                   </label>
                   <select
                     id="newFieldCode"
@@ -585,16 +618,16 @@ const ManageDoctors = () => {
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     required
                   >
-                    <option value="">Uzmanlık Seçin</option>
+                    <option value="">Select Specialty</option>
                     {Array.isArray(fields) && fields.map(field => (
-                      <option key={field.fieldCode} value={field.fieldCode}>{field.fieldName}</option>
+                      <option key={field.fieldCode} value={field.fieldCode}>{translateSpecialty(field.fieldName)}</option>
                     ))}
                   </select>
                 </div>
                 
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newHospitalCode">
-                    Hastane*
+                    Hospital*
                   </label>
                   <select
                     id="newHospitalCode"
@@ -603,7 +636,7 @@ const ManageDoctors = () => {
                     className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     required
                   >
-                    <option value="">Hastane Seçin</option>
+                    <option value="">Select Hospital</option>
                     {Array.isArray(hospitals) && hospitals.map(hospital => (
                       <option key={hospital.hospitalCode} value={hospital.hospitalCode}>{hospital.hospitalName}</option>
                     ))}
@@ -616,13 +649,13 @@ const ManageDoctors = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                     onClick={handleCloseCreateModal}
                   >
-                    İptal
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    Oluştur
+                    Create
                   </button>
                 </div>
               </form>

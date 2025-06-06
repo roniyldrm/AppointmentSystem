@@ -91,7 +91,7 @@ const UserAccount = () => {
           })
           .catch(err => {
             console.error('Error fetching profile:', err);
-            setError('Profil bilgileri yüklenirken bir hata oluştu.');
+            setError('An error occurred while loading profile information.');
             
             // Fall back to registration data if profile fetch fails
             setFormData({
@@ -146,7 +146,7 @@ const UserAccount = () => {
       
       const userCode = localStorage.getItem('userId');
       if (!userCode) {
-        throw new Error('Kullanıcı kimliği bulunamadı. Lütfen tekrar giriş yapın.');
+        throw new Error('User identifier not found. Please log in again.');
       }
       
       // Call the API to update the profile
@@ -157,7 +157,7 @@ const UserAccount = () => {
       setTimeout(() => setSuccess(false), 3000);
       console.log('Profile updated successfully');
     } catch (err) {
-      setError('Profil güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setError('An error occurred while updating profile. Please try again.');
       console.error('Error updating profile:', err);
     } finally {
       setSaveLoading(false);
@@ -170,12 +170,12 @@ const UserAccount = () => {
     
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('Yeni şifreler eşleşmiyor.');
+      setPasswordError('New passwords do not match.');
       return;
     }
     
     if (passwordData.newPassword.length < 6) {
-      setPasswordError('Şifre en az 6 karakter uzunluğunda olmalıdır.');
+      setPasswordError('Password must be at least 6 characters long.');
       return;
     }
     
@@ -184,7 +184,7 @@ const UserAccount = () => {
       const userCode = localStorage.getItem('userId');
       
       if (!userCode) {
-        throw new Error('Kullanıcı kimliği bulunamadı.');
+        throw new Error('User identifier not found.');
       }
       
       await changePassword(userCode, passwordData.currentPassword, passwordData.newPassword);
@@ -199,7 +199,7 @@ const UserAccount = () => {
       setPasswordSuccess(true);
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
-      setPasswordError('Şifre değiştirme işlemi başarısız oldu. Mevcut şifrenizi kontrol edin.');
+      setPasswordError('Password change failed. Please check your current password.');
       console.error('Password change error:', err);
     } finally {
       setPasswordLoading(false);
@@ -286,12 +286,12 @@ const UserAccount = () => {
       <div className="app-container">
         <div className="card max-w-5xl mx-auto">
           <div className="card-header">
-            <h1 className="page-title">Profilim</h1>
+            <h1 className="page-title">My Profile</h1>
           </div>
           <div className="card-body flex justify-center items-center py-16">
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-3"></div>
-              <p className="text-gray-500">Profil bilgileri yükleniyor...</p>
+              <p className="text-gray-500">Loading profile information...</p>
             </div>
           </div>
         </div>
@@ -310,8 +310,8 @@ const UserAccount = () => {
     <div className="app-container">
       <div className="card max-w-5xl mx-auto">
         <div className="card-header">
-          <h1 className="page-title">Profilim</h1>
-          <div className="text-sm text-gray-500">Kişisel bilgilerinizi yönetin ve güncelleyin</div>
+          <h1 className="page-title">My Profile</h1>
+          <div className="text-sm text-gray-500">Manage and update your personal information</div>
         </div>
         
         <div className="card-body">
@@ -335,7 +335,7 @@ const UserAccount = () => {
                   <i className="fas fa-check-circle text-green-400"></i>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium">Profil bilgileriniz başarıyla güncellendi!</p>
+                  <p className="text-sm font-medium">Your profile information has been successfully updated!</p>
                 </div>
               </div>
             </div>
@@ -353,7 +353,7 @@ const UserAccount = () => {
                 onClick={() => setActiveTab('profile')}
               >
                 <i className="fas fa-user mr-2"></i>
-                Kişisel Bilgiler
+                <span>Personal Information</span>
               </button>
               <button
                 className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -364,7 +364,7 @@ const UserAccount = () => {
                 onClick={() => setActiveTab('medical')}
               >
                 <i className="fas fa-heartbeat mr-2"></i>
-                Sağlık Bilgileri
+                <span>Health Information</span>
               </button>
               <button
                 className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -375,7 +375,7 @@ const UserAccount = () => {
                 onClick={() => setActiveTab('security')}
               >
                 <i className="fas fa-lock mr-2"></i>
-                Güvenlik
+                <span>Security</span>
               </button>
             </div>
           </div>
@@ -385,7 +385,7 @@ const UserAccount = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="firstName" className="form-label">Ad</label>
+                  <label htmlFor="firstName" className="form-label">First Name</label>
                   <input
                     type="text"
                     id="firstName"
@@ -393,13 +393,13 @@ const UserAccount = () => {
                     value={formData.firstName}
                     onChange={handleChange}
                     className={getFieldStyle()}
-                    placeholder="Adınız"
+                    placeholder="Your first name"
                     readOnly={!editMode}
                     tabIndex={!editMode ? -1 : 0}
                   />
                 </div>
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="lastName" className="form-label">Soyad</label>
+                  <label htmlFor="lastName" className="form-label">Last Name</label>
                   <input
                     type="text"
                     id="lastName"
@@ -407,7 +407,7 @@ const UserAccount = () => {
                     value={formData.lastName}
                     onChange={handleChange}
                     className={getFieldStyle()}
-                    placeholder="Soyadınız"
+                    placeholder="Your last name"
                     readOnly={!editMode}
                     tabIndex={!editMode ? -1 : 0}
                   />
@@ -416,7 +416,7 @@ const UserAccount = () => {
               
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="email" className="form-label">E-posta</label>
+                  <label htmlFor="email" className="form-label">Email</label>
                   <input
                     type="email"
                     id="email"
@@ -424,13 +424,13 @@ const UserAccount = () => {
                     value={formData.email}
                     onChange={handleChange}
                     className={getFieldStyle()}
-                    placeholder="ornek@eposta.com"
+                    placeholder="example@email.com"
                     readOnly={!editMode}
                     tabIndex={!editMode ? -1 : 0}
                   />
                 </div>
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="phone" className="form-label">Telefon</label>
+                  <label htmlFor="phone" className="form-label">Phone</label>
                   <input
                     type="tel"
                     id="phone"
@@ -446,14 +446,14 @@ const UserAccount = () => {
               </div>
               
               <div>
-                <label htmlFor="address" className="form-label">Adres</label>
+                <label htmlFor="address" className="form-label">Address</label>
                 <textarea
                   id="address"
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
                   className={`h-24 ${getFieldStyle()}`}
-                  placeholder="Adresiniz"
+                  placeholder="Your address"
                   readOnly={!editMode}
                   tabIndex={!editMode ? -1 : 0}
                 ></textarea>
@@ -461,7 +461,7 @@ const UserAccount = () => {
               
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="birthDate" className="form-label">Doğum Tarihi</label>
+                  <label htmlFor="birthDate" className="form-label">Birth Date</label>
                   <input
                     type="date"
                     id="birthDate"
@@ -474,7 +474,7 @@ const UserAccount = () => {
                   />
                 </div>
                 <div className="w-full md:w-1/2">
-                  <label htmlFor="gender" className="form-label">Cinsiyet</label>
+                  <label htmlFor="gender" className="form-label">Gender</label>
                   <select
                     id="gender"
                     name="gender"
@@ -484,10 +484,10 @@ const UserAccount = () => {
                     disabled={!editMode}
                     tabIndex={!editMode ? -1 : 0}
                   >
-                    <option value="">Seçiniz</option>
-                    <option value="male">Erkek</option>
-                    <option value="female">Kadın</option>
-                    <option value="other">Diğer</option>
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
               </div>
@@ -501,7 +501,7 @@ const UserAccount = () => {
                       className="btn btn-outline"
                     >
                       <i className="fas fa-times mr-2"></i>
-                      İptal
+                      Cancel
                     </button>
                     <button
                       type="submit"
@@ -511,12 +511,12 @@ const UserAccount = () => {
                       {saveLoading ? (
                         <>
                           <i className="fas fa-spinner fa-spin mr-2"></i>
-                          Güncelleniyor...
+                          Updating...
                         </>
                       ) : (
                         <>
                           <i className="fas fa-save mr-2"></i>
-                          Değişiklikleri Kaydet
+                          Save Changes
                         </>
                       )}
                     </button>
@@ -528,7 +528,7 @@ const UserAccount = () => {
                     className="btn btn-primary ml-auto"
                   >
                     <i className="fas fa-edit mr-2"></i>
-                    Bilgilerimi Düzenle
+                    Edit My Information
                   </button>
                 )}
               </div>
@@ -540,7 +540,7 @@ const UserAccount = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/3">
-                  <label htmlFor="bloodType" className="form-label">Kan Grubu</label>
+                  <label htmlFor="bloodType" className="form-label">Blood Type</label>
                   <select
                     id="bloodType"
                     name="bloodType"
@@ -550,7 +550,7 @@ const UserAccount = () => {
                     disabled={!editMode}
                     tabIndex={!editMode ? -1 : 0}
                   >
-                    <option value="">Seçiniz</option>
+                    <option value="">Select</option>
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
                     <option value="B+">B+</option>
@@ -562,7 +562,7 @@ const UserAccount = () => {
                   </select>
                 </div>
                 <div className="w-full md:w-1/3">
-                  <label htmlFor="height" className="form-label">Boy (cm)</label>
+                  <label htmlFor="height" className="form-label">Height (cm)</label>
                   <input
                     type="number"
                     id="height"
@@ -576,7 +576,7 @@ const UserAccount = () => {
                   />
                 </div>
                 <div className="w-full md:w-1/3">
-                  <label htmlFor="weight" className="form-label">Kilo (kg)</label>
+                  <label htmlFor="weight" className="form-label">Weight (kg)</label>
                   <input
                     type="number"
                     id="weight"
@@ -592,42 +592,42 @@ const UserAccount = () => {
               </div>
               
               <div>
-                <label htmlFor="allergies" className="form-label">Alerjiler</label>
+                <label htmlFor="allergies" className="form-label">Allergies</label>
                 <textarea
                   id="allergies"
                   name="allergies"
                   value={formData.allergies}
                   onChange={handleChange}
                   className={`h-20 ${getFieldStyle()}`}
-                  placeholder="Bilinen alerjileriniz"
+                  placeholder="Your known allergies"
                   readOnly={!editMode}
                   tabIndex={!editMode ? -1 : 0}
                 ></textarea>
               </div>
               
               <div>
-                <label htmlFor="chronicDiseases" className="form-label">Kronik Hastalıklar</label>
+                <label htmlFor="chronicDiseases" className="form-label">Chronic Diseases</label>
                 <textarea
                   id="chronicDiseases"
                   name="chronicDiseases"
                   value={formData.chronicDiseases}
                   onChange={handleChange}
                   className={`h-20 ${getFieldStyle()}`}
-                  placeholder="Kronik hastalıklarınız"
+                  placeholder="Your chronic diseases"
                   readOnly={!editMode}
                   tabIndex={!editMode ? -1 : 0}
                 ></textarea>
               </div>
               
               <div>
-                <label htmlFor="currentMedications" className="form-label">Kullanılan İlaçlar</label>
+                <label htmlFor="currentMedications" className="form-label">Current Medications</label>
                 <textarea
                   id="currentMedications"
                   name="currentMedications"
                   value={formData.currentMedications}
                   onChange={handleChange}
                   className={`h-20 ${getFieldStyle()}`}
-                  placeholder="Düzenli kullandığınız ilaçlar"
+                  placeholder="Medications you regularly take"
                   readOnly={!editMode}
                   tabIndex={!editMode ? -1 : 0}
                 ></textarea>
@@ -642,7 +642,7 @@ const UserAccount = () => {
                       className="btn btn-outline"
                     >
                       <i className="fas fa-times mr-2"></i>
-                      İptal
+                      Cancel
                     </button>
                     <button
                       type="submit"
@@ -652,12 +652,12 @@ const UserAccount = () => {
                       {saveLoading ? (
                         <>
                           <i className="fas fa-spinner fa-spin mr-2"></i>
-                          Güncelleniyor...
+                          Updating...
                         </>
                       ) : (
                         <>
                           <i className="fas fa-save mr-2"></i>
-                          Değişiklikleri Kaydet
+                          Save Changes
                         </>
                       )}
                     </button>
@@ -669,7 +669,7 @@ const UserAccount = () => {
                     className="btn btn-primary ml-auto"
                   >
                     <i className="fas fa-edit mr-2"></i>
-                    Bilgilerimi Düzenle
+                    Edit My Information
                   </button>
                 )}
               </div>
@@ -699,7 +699,7 @@ const UserAccount = () => {
                       <i className="fas fa-check-circle text-green-400"></i>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm font-medium">Şifreniz başarıyla güncellendi!</p>
+                      <p className="text-sm font-medium">Your password has been successfully updated!</p>
                     </div>
                   </div>
                 </div>
@@ -712,14 +712,14 @@ const UserAccount = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm">
-                      Şifrenizi değiştirmek için mevcut şifrenizi ve yeni şifrenizi girmeniz gerekmektedir.
+                      You need to enter your current password and new password to change your password.
                     </p>
                   </div>
                 </div>
               </div>
               
               <div>
-                <label htmlFor="currentPassword" className="form-label">Mevcut Şifre</label>
+                <label htmlFor="currentPassword" className="form-label">Current Password</label>
                 <input
                   type="password"
                   id="currentPassword"
@@ -732,7 +732,7 @@ const UserAccount = () => {
               </div>
               
               <div>
-                <label htmlFor="newPassword" className="form-label">Yeni Şifre</label>
+                <label htmlFor="newPassword" className="form-label">New Password</label>
                 <input
                   type="password"
                   id="newPassword"
@@ -743,12 +743,12 @@ const UserAccount = () => {
                   placeholder="••••••••"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Şifreniz en az 6 karakter uzunluğunda olmalıdır.
+                  Your password must be at least 6 characters long.
                 </p>
               </div>
               
               <div>
-                <label htmlFor="confirmPassword" className="form-label">Yeni Şifre (Tekrar)</label>
+                <label htmlFor="confirmPassword" className="form-label">New Password (Repeat)</label>
                 <input
                   type="password"
                   id="confirmPassword"
@@ -761,16 +761,16 @@ const UserAccount = () => {
               </div>
               
               <div className="p-4 bg-blue-50 text-blue-800 rounded-lg">
-                <h3 className="font-medium mb-2">İki Faktörlü Doğrulama</h3>
+                <h3 className="font-medium mb-2">Two-Factor Authentication</h3>
                 <div className="flex items-center">
                   <div className="form-switch">
                     <input type="checkbox" id="twoFactorAuth" className="form-switch-checkbox" />
                     <label htmlFor="twoFactorAuth" className="form-switch-label"></label>
                   </div>
-                  <span className="ml-2 text-sm">İki faktörlü doğrulamayı etkinleştir</span>
+                  <span className="ml-2 text-sm">Enable two-factor authentication</span>
                 </div>
                 <p className="text-xs mt-2">
-                  İki faktörlü doğrulama, hesabınızın güvenliğini artırmak için giriş yaparken telefonunuza gönderilen ek bir doğrulama kodu gerektirir.
+                  Two-factor authentication requires an additional verification code sent to your phone when logging in to increase your account security.
                 </p>
               </div>
               
@@ -783,12 +783,12 @@ const UserAccount = () => {
                   {passwordLoading ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Güncelleniyor...
+                      Updating...
                     </>
                   ) : (
                     <>
                       <i className="fas fa-lock mr-2"></i>
-                      Şifremi Güncelle
+                      Update My Password
                     </>
                   )}
                 </button>
@@ -804,7 +804,7 @@ const UserAccount = () => {
               className="btn btn-outline mt-3 sm:mt-0"
             >
               <i className="fas fa-calendar-check mr-1"></i>
-              Randevularıma Git
+              Go to My Appointments
             </button>
             
             <button 
@@ -812,7 +812,7 @@ const UserAccount = () => {
               className="btn btn-secondary"
             >
               <i className="fas fa-home mr-1"></i>
-              Ana Sayfa
+              Home
             </button>
           </div>
         </div>

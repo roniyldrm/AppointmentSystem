@@ -80,7 +80,7 @@ const DoctorSchedule = () => {
       setAppointmentLimit({ 
         canBook: true, 
         appointmentCount: 0, 
-        message: 'Randevu sınırı kontrol edilemedi.' 
+        message: 'Unable to check appointment limit.' 
       });
     } finally {
       setLimitLoading(false);
@@ -95,7 +95,7 @@ const DoctorSchedule = () => {
         const response = await AppointmentService.getDoctor(doctorId);
         setDoctor(response.data);
       } catch (err) {
-        setError('Doktor bilgileri yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+        setError('Error occurred while loading doctor information. Please try again later.');
         console.error('Error fetching doctor:', err);
       } finally {
         setLoading(false);
@@ -134,7 +134,7 @@ const DoctorSchedule = () => {
           setTimeSlots(response.data);
         } else {
           console.error("Invalid response format:", response.data);
-          setError("Uygun zaman dilimi bulunamadı. Lütfen başka bir tarih seçin.");
+          setError("No suitable time slot found. Please select another date.");
           setTimeSlots([]);
         }
         
@@ -142,7 +142,7 @@ const DoctorSchedule = () => {
         setExpandedHours([]);
         setSelectedSlot(null);
       } catch (err) {
-        setError('Zaman dilimlerini yüklerken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+        setError('Error occurred while loading time slots. Please try again later.');
         console.error('Error fetching time slots:', err);
         setTimeSlots([]);
       } finally {
@@ -250,10 +250,10 @@ const DoctorSchedule = () => {
           onClick={() => navigate(-1)}
           className="mb-4 text-blue-600 hover:text-blue-800 flex items-center"
         >
-          ← Doktor Aramasına Geri Dön
+          ← Back to Doctor Search
         </button>
         
-        <h1 className="text-2xl font-bold text-blue-600 mb-6">Randevu Al</h1>
+        <h1 className="text-2xl font-bold text-blue-600 mb-6">Book Appointment</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -277,7 +277,7 @@ const DoctorSchedule = () => {
               <div className="ml-3">
                 <p className="text-sm font-medium">{appointmentLimit.message}</p>
                 {!appointmentLimit.canBook && (
-                  <p className="text-xs mt-1">Bir sonraki randevu alabilmek için eski randevularınızdan birinin 1 hafta geçmesini bekleyin.</p>
+                  <p className="text-xs mt-1">To be able to book another appointment, wait for 1 week to pass from one of your old appointments.</p>
                 )}
               </div>
             </div>
@@ -288,7 +288,7 @@ const DoctorSchedule = () => {
           <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded mb-4">
             <div className="flex items-center">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>
-              <span className="text-gray-600 text-sm">Randevu sınırı kontrol ediliyor...</span>
+              <span className="text-gray-600 text-sm">Checking appointment limit...</span>
             </div>
           </div>
         )}
@@ -340,12 +340,12 @@ const DoctorSchedule = () => {
               </div>
             ) : timeSlots.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-700 text-lg">Bu tarih için müsait saat bulunamadı.</p>
-                <p className="text-gray-600 mt-2">Lütfen başka bir tarih seçin veya farklı bir doktor deneyin.</p>
+                <p className="text-gray-700 text-lg">No available time found for this date.</p>
+                <p className="text-gray-600 mt-2">Please select another date or try a different doctor.</p>
               </div>
             ) : (
               <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Müsait Saatler</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Available Times</h3>
                 
                 <div className="space-y-4">
                   {Object.entries(getHourlySlots()).map(([hour, slots]) => (
@@ -389,13 +389,13 @@ const DoctorSchedule = () => {
                     onClick={handleBookAppointment}
                     disabled={!selectedSlot || loading || (appointmentLimit && !appointmentLimit.canBook)}
                   >
-                    {loading ? 'Randevu Alınıyor...' : 
-                     (appointmentLimit && !appointmentLimit.canBook) ? 'Haftalık Limit Doldu' : 
-                     'Randevu Al'}
+                    {loading ? <span>Booking Appointment...</span> : 
+                     (appointmentLimit && !appointmentLimit.canBook) ? <span>Weekly Limit Reached</span> : 
+                     <span>Book Appointment</span>}
                   </button>
                   {appointmentLimit && !appointmentLimit.canBook && (
                     <p className="text-sm text-gray-600 mt-2">
-                      Haftalık randevu sınırınız dolmuştur. Yeni randevu alabilmek için bekleyiniz.
+                      Your weekly appointment limit is full. Please wait to book a new appointment.
                     </p>
                   )}
                 </div>
@@ -404,7 +404,7 @@ const DoctorSchedule = () => {
           </div>
         ) : (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            Doktor bulunamadı. Lütfen geri dönüp tekrar deneyin.
+            Doctor not found. Please go back and try again.
           </div>
         )}
       </Paper>

@@ -101,7 +101,7 @@ const ManageUsers = () => {
   };
   
   const handleDeleteUser = async (userCode) => {
-    if (!window.confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
     
@@ -111,7 +111,7 @@ const ManageUsers = () => {
       // Remove from local state
       setUsers(users.filter(user => user.userCode !== userCode));
     } catch (err) {
-      setError('Kullanıcı silinirken hata oluştu. Lütfen tekrar deneyin.');
+      setError('Failed to delete user. Please try again.');
       console.error('Error deleting user:', err);
     }
   };
@@ -128,9 +128,9 @@ const ManageUsers = () => {
 
   const getRoleDisplayName = (role) => {
     const roleMap = {
-      'patient': 'Hasta',
-      'doctor': 'Doktor',
-      'admin': 'Yönetici'
+      'patient': 'Patient',
+      'doctor': 'Doctor',
+      'admin': 'Administrator'
     };
     return roleMap[role] || role;
   };
@@ -147,7 +147,7 @@ const ManageUsers = () => {
   return (
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Kullanıcıları Yönet</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Manage Users</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -157,12 +157,12 @@ const ManageUsers = () => {
         
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filtreler</h2>
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Filters</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="role">
-                Rol
+                Role
               </label>
               <select
                 id="role"
@@ -171,22 +171,22 @@ const ManageUsers = () => {
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
-                <option value="">Tüm Roller</option>
-                <option value="patient">Hasta</option>
-                <option value="doctor">Doktor</option>
-                <option value="admin">Yönetici</option>
+                <option value="">All Roles</option>
+                <option value="patient">Patient</option>
+                <option value="doctor">Doctor</option>
+                <option value="admin">Administrator</option>
               </select>
             </div>
             
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="search">
-                Ara
+                Search
               </label>
               <input
                 id="search"
                 name="search"
                 type="text"
-                placeholder="İsim, e-posta veya telefona göre ara..."
+                placeholder="Search by name, email or phone..."
                 value={filter.search}
                 onChange={handleFilterChange}
                 className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -199,13 +199,13 @@ const ManageUsers = () => {
               onClick={handleResetFilter}
               className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
             >
-              Sıfırla
+              Reset
             </button>
             <button
               onClick={handleApplyFilter}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
-              Filtreleri Uygula
+              Apply Filters
             </button>
           </div>
         </div>
@@ -218,7 +218,7 @@ const ManageUsers = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Kriterlere uygun kullanıcı bulunamadı.</p>
+              <p className="text-gray-500">No users found matching the criteria.</p>
             </div>
           ) : (
             <>
@@ -227,19 +227,19 @@ const ManageUsers = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kullanıcı Bilgileri
+                        User Information
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İletişim
+                        Contact
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rol
+                        Role
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kayıt Tarihi
+                        Registration Date
                       </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İşlemler
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -260,11 +260,11 @@ const ManageUsers = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {user.firstName || user.lastName 
                                   ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                  : user.email?.split('@')[0] || `Kullanıcı ${user.userCode}`
+                                  : user.email?.split('@')[0] || `User ${user.userCode}`
                                 }
                               </div>
                               <div className="text-sm text-gray-500">
-                                Kod: {user.userCode}
+                                Code: {user.userCode}
                               </div>
                             </div>
                           </div>
@@ -291,7 +291,7 @@ const ManageUsers = () => {
                             className="text-red-600 hover:text-red-900"
                             disabled={user.role === 'admin'} // Prevent deleting admin users
                           >
-                            {user.role === 'admin' ? 'Silinemez' : 'Sil'}
+                            {user.role === 'admin' ? 'Cannot Delete' : 'Delete'}
                           </button>
                         </td>
                       </tr>
@@ -310,10 +310,10 @@ const ManageUsers = () => {
                       page === 1 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Önceki
+                    Previous
                   </button>
                   <span className="text-sm text-gray-700">
-                    Sayfa {page} / {totalPages}
+                    Page {page} / {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
@@ -322,7 +322,7 @@ const ManageUsers = () => {
                       page === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Sonraki
+                    Next
                   </button>
                 </div>
               </div>
